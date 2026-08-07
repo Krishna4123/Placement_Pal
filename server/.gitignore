@@ -1,0 +1,37 @@
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Environment secrets
+.env
+
+# Uploads
+app/uploads/*
+!app/uploads/.gitkeep
+
+# ChromaDB persistent store
+chroma_db/*
+!chroma_db/.gitkeep
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

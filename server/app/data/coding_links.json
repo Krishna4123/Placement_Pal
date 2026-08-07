@@ -1,0 +1,37 @@
+[
+  {
+    "topic": "Arrays",
+    "difficulty": "easy",
+    "platform": "LeetCode",
+    "url": "https://leetcode.com/tag/array/",
+    "description": "Array problems on LeetCode"
+  },
+  {
+    "topic": "Dynamic Programming",
+    "difficulty": "hard",
+    "platform": "LeetCode",
+    "url": "https://leetcode.com/tag/dynamic-programming/",
+    "description": "DP problems on LeetCode"
+  },
+  {
+    "topic": "Graphs",
+    "difficulty": "medium",
+    "platform": "LeetCode",
+    "url": "https://leetcode.com/tag/graph/",
+    "description": "Graph problems on LeetCode"
+  },
+  {
+    "topic": "Trees",
+    "difficulty": "medium",
+    "platform": "LeetCode",
+    "url": "https://leetcode.com/tag/tree/",
+    "description": "Tree problems on LeetCode"
+  },
+  {
+    "topic": "Binary Search",
+    "difficulty": "easy",
+    "platform": "GeeksForGeeks",
+    "url": "https://www.geeksforgeeks.org/binary-search/",
+    "description": "Binary Search tutorial and problems"
+  }
+]

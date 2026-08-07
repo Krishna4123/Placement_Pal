@@ -1,0 +1,30 @@
+[
+  {
+    "category": "Quantitative Aptitude",
+    "difficulty": "easy",
+    "platform": "IndiaBix",
+    "url": "https://www.indiabix.com/aptitude/questions-and-answers/",
+    "description": "Quantitative aptitude practice questions"
+  },
+  {
+    "category": "Logical Reasoning",
+    "difficulty": "medium",
+    "platform": "IndiaBix",
+    "url": "https://www.indiabix.com/logical-reasoning/questions-and-answers/",
+    "description": "Logical reasoning practice questions"
+  },
+  {
+    "category": "Verbal Ability",
+    "difficulty": "easy",
+    "platform": "IndiaBix",
+    "url": "https://www.indiabix.com/verbal-ability/questions-and-answers/",
+    "description": "Verbal ability practice questions"
+  },
+  {
+    "category": "Data Interpretation",
+    "difficulty": "medium",
+    "platform": "PrepInsta",
+    "url": "https://prepinsta.com/data-interpretation/",
+    "description": "Data interpretation problems"
+  }
+]

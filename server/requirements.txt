@@ -1,0 +1,46 @@
+# ─── Web Framework ───────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.1
+python-multipart>=0.0.9
+
+# ─── Database ────────────────────────────────────────────────
+motor>=3.4.0
+pymongo>=4.7.2
+
+# ─── Data Validation ─────────────────────────────────────────
+pydantic>=2.7.4
+pydantic-settings>=2.3.1
+
+# ─── Environment ─────────────────────────────────────────────
+python-dotenv>=1.0.1
+
+# ─── LangChain Ecosystem ─────────────────────────────────────
+langchain>=0.2.5
+langchain-core>=0.2.9
+langchain-openai>=0.1.8
+langchain-community>=0.2.5
+langchain-chroma>=0.1.2
+langchain-text-splitters>=0.2.1
+langgraph>=0.1.9
+
+# ─── CrewAI ──────────────────────────────────────────────────
+crewai>=0.30.11
+
+# ─── Vector Store ────────────────────────────────────────────
+chromadb>=0.5.3
+
+# ─── OpenAI ──────────────────────────────────────────────────
+openai>=1.30.5
+tiktoken>=0.7.0
+
+# ─── Tavily Search ───────────────────────────────────────────
+tavily-python>=0.3.3
+
+# ─── Document Parsing ────────────────────────────────────────
+pypdf>=4.2.0
+
+# ─── HTTP ────────────────────────────────────────────────────
+httpx>=0.27.0
+
+# ─── Utilities ───────────────────────────────────────────────
+tenacity>=8.3.0

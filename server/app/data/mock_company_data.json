@@ -1,0 +1,38 @@
+[
+  {
+    "company_name": "Google",
+    "interview_rounds": ["Online Assessment", "Technical Phone Screen", "3x Onsite Coding", "System Design", "Googleyness"],
+    "common_topics": ["Arrays", "Trees", "Graphs", "Dynamic Programming", "System Design"],
+    "tech_stack": ["Python", "C++", "Java", "Go"],
+    "difficulty_level": "hard",
+    "tips": [
+      "Focus heavily on DSA — LC Medium/Hard.",
+      "Practice system design: Designing Data-Intensive Applications is a must-read.",
+      "Communicate your thought process clearly throughout."
+    ]
+  },
+  {
+    "company_name": "Amazon",
+    "interview_rounds": ["Online Assessment", "Technical Phone Screen", "4x Onsite Loop"],
+    "common_topics": ["OOP", "Arrays", "Trees", "Leadership Principles", "System Design"],
+    "tech_stack": ["Java", "Python", "C++"],
+    "difficulty_level": "medium",
+    "tips": [
+      "Prepare STAR stories for all 16 Leadership Principles.",
+      "Amazon favours behavioural fit as much as technical skill.",
+      "Practice LC Easy to Medium extensively."
+    ]
+  },
+  {
+    "company_name": "Microsoft",
+    "interview_rounds": ["Online Assessment", "Technical Phone Screen", "3-4x Onsite"],
+    "common_topics": ["Arrays", "Strings", "Trees", "OOP Design", "System Design"],
+    "tech_stack": ["C#", "Python", "C++", "TypeScript"],
+    "difficulty_level": "medium",
+    "tips": [
+      "Strong focus on clean code and OOP principles.",
+      "Be ready for low-level design questions.",
+      "Cultural fit and growth mindset matter a lot."
+    ]
+  }
+]
