@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { Bot, X, Mic, Send } from "lucide-react";
-import { useSession } from "../../context/SessionContext";
-
-import { vaultApi } from "../../api/vault";
+import { useSession } from "@/context/SessionContext";
+import { vaultApi } from "@/api/vault";
 
 export const ChatPanel = ({ onClose }: { onClose: () => void }) => {
   const { profile } = useSession();
