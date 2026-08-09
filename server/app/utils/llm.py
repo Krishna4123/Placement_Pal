@@ -50,7 +50,8 @@ def get_llm(
         api_key=settings.openai_api_key,
         base_url=settings.openai_api_base or None,   # None → uses official OpenAI URL
         streaming=streaming,
-        max_retries=3,
+        max_retries=1,
+        request_timeout=20.0,
     )
 
 

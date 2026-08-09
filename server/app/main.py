@@ -83,13 +83,13 @@ def create_application() -> FastAPI:
     # ── Lifecycle events ──────────────────────────────────────
     @app.on_event("startup")
     async def on_startup():
-        logger.info("🚀 PlacementPal API starting up …")
+        logger.info("PlacementPal API starting up...")
         await connect_to_mongo()
-        logger.info("✅ MongoDB connected")
+        logger.info("MongoDB connected")
 
     @app.on_event("shutdown")
     async def on_shutdown():
-        logger.info("🛑 PlacementPal API shutting down …")
+        logger.info("PlacementPal API shutting down...")
         await close_mongo_connection()
 
     # ── Routers ───────────────────────────────────────────────

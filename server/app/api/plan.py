@@ -11,36 +11,35 @@ from __future__ import annotations
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
+from app.services.planner_service import PlannerService
 from app.models.request_models import MarkTaskRequest, AdvanceDayRequest
+from app.models.response_models import APIResponse, MarkTaskResponse, AdvanceDayResponse
 
 router = APIRouter(prefix="/plan", tags=["Plan"])
+planner_service = PlannerService()
 
 
 @router.post(
     "/mark-task",
     summary="Update the status of a specific task",
     status_code=status.HTTP_200_OK,
+    response_model=APIResponse[MarkTaskResponse],
 )
 async def mark_task(body: MarkTaskRequest):
     """
     Mark a task as pending / in_progress / done / skipped.
-
-    TODO:
-        - Delegate to PlannerService.mark_task()
-        - Return real MarkTaskResponse
     """
-    return JSONResponse(
-        status_code=200,
-        content={
-            "success": True,
-            "message": "Task status updated (mock)",
-            "data": {
-                "session_id": body.session_id,
-                "task_id": body.task_id,
-                "new_status": body.status,
-                "updated": True,
-            },
-        },
+    res = await planner_service.mark_task(body.session_id, body.task_id, body.status)
+    resp_data = MarkTaskResponse(
+        session_id=res["session_id"],
+        task_id=res["task_id"],
+        new_status=res["new_status"],
+        updated=res["updated"],
+    )
+    return APIResponse[MarkTaskResponse](
+        success=True,
+        message="Task status updated",
+        data=resp_data,
     )
 
 
@@ -48,24 +47,20 @@ async def mark_task(body: MarkTaskRequest):
     "/advance-day",
     summary="Advance the active study day for a session",
     status_code=status.HTTP_200_OK,
+    response_model=APIResponse[AdvanceDayResponse],
 )
 async def advance_day(body: AdvanceDayRequest):
     """
     Move the session to the next (or a specified) study day.
-
-    TODO:
-        - Delegate to PlannerService.advance_day()
-        - Return real AdvanceDayResponse
     """
-    return JSONResponse(
-        status_code=200,
-        content={
-            "success": True,
-            "message": "Day advanced (mock)",
-            "data": {
-                "session_id": body.session_id,
-                "previous_day": 1,
-                "current_day": body.target_day or 2,
-            },
-        },
+    res = await planner_service.advance_day(body.session_id, body.target_day)
+    resp_data = AdvanceDayResponse(
+        session_id=res["session_id"],
+        previous_day=res["previous_day"],
+        current_day=res["current_day"],
+    )
+    return APIResponse[AdvanceDayResponse](
+        success=True,
+        message="Active day advanced",
+        data=resp_data,
     )

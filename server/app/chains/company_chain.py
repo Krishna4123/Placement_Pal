@@ -69,14 +69,14 @@ async def run_company_summary(
     """
     chain = get_company_chain()
 
-    # Format search results into a readable block
+    # Truncate search results aggressively to reduce LLM token load
     if search_results:
         formatted = "\n\n".join(
-            f"[{i+1}] {r.get('url', '')}\n{r.get('content', '')}"
-            for i, r in enumerate(search_results[:6])
+            f"[{i+1}] {r.get('url', '')}\n{r.get('content', '')[:300]}"
+            for i, r in enumerate(search_results[:3])
         )
     else:
-        formatted = raw_text or "No search results available."
+        formatted = raw_text[:900] if raw_text else "No search results available."
 
     logger.info("Running company chain for: %s", company_name)
     result = await chain.ainvoke({

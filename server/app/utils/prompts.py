@@ -16,27 +16,18 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 # Extraction Chain
 # ─────────────────────────────────────────────────────────────
 
-EXTRACTION_SYSTEM = """You are an expert placement counsellor AI assistant.
-Analyse the student's free-text message and extract structured placement preparation intent.
-
-Return ONLY a valid JSON object with these exact keys:
+EXTRACTION_SYSTEM = """Extract placement intent from the student's message. Return ONLY compact JSON:
 {{
-  "target_companies": ["list of company names mentioned or implied"],
-  "target_roles": ["list of job roles/positions"],
-  "preparation_duration_days": <integer, default 30 if not mentioned>,
-  "skill_gaps": ["topics the student feels weak in"],
-  "current_skills": ["topics the student already knows"],
-  "preferences": {{
-    "study_hours_per_day": <float>,
-    "focus_areas": ["DSA", "System Design", "Core CS", "Aptitude"]
-  }}
+  "target_companies":[],
+  "target_roles":[],
+  "interview_date":null,
+  "preparation_duration_days":14,
+  "process_rounds":[],
+  "skill_gaps":[],
+  "current_skills":[],
+  "preferences":{{"study_hours_per_day":4,"focus_areas":["DSA","System Design"]}}
 }}
-
-Rules:
-- Always return valid JSON only, no markdown fences, no extra text.
-- If information is not present in the message, use sensible defaults.
-- Infer companies from context (e.g., "FAANG" → ["Meta", "Apple", "Amazon", "Netflix", "Google"]).
-"""
+Return valid JSON only. No markdown. No extra text."""
 
 EXTRACTION_HUMAN = "Student message: {user_message}"
 
@@ -50,30 +41,16 @@ extraction_prompt = ChatPromptTemplate.from_messages([
 # Company Summary Chain
 # ─────────────────────────────────────────────────────────────
 
-COMPANY_SUMMARY_SYSTEM = """You are a company intelligence analyst specialising in tech placement preparation.
-Given raw search results about a company, produce a structured placement profile.
-
-Return ONLY a valid JSON object:
+COMPANY_SUMMARY_SYSTEM = """Summarise a company's placement profile from search results. Return ONLY compact JSON:
 {{
-  "company_name": "<name>",
-  "overview": "<2-3 sentence description>",
-  "interview_rounds": ["Online Assessment", "Technical Phone Screen", "..."],
-  "common_topics": ["Arrays", "DP", "System Design", "..."],
-  "tech_stack": ["Python", "Java", "..."],
-  "difficulty_level": "easy | medium | hard",
-  "avg_package_lpa": <number or null>,
-  "tips": [
-    "Tip 1 for cracking this company",
-    "Tip 2 ...",
-    "Tip 3 ..."
-  ],
-  "resources": ["url1", "url2"]
+  "company_name":"",
+  "overview":"1-2 sentences about the company.",
+  "common_topics":[],
+  "tech_stack":[],
+  "past_interview_experiences":[],
+  "tips":[]
 }}
-
-Rules:
-- Return valid JSON only, no markdown fences, no extra text.
-- Be specific and actionable in the tips.
-"""
+Max 3 items per list. Return valid JSON only. No markdown."""
 
 COMPANY_SUMMARY_HUMAN = "Company: {company_name}\n\nSearch results:\n{search_results}"
 
@@ -87,26 +64,9 @@ company_summary_prompt = ChatPromptTemplate.from_messages([
 # Recall Chain
 # ─────────────────────────────────────────────────────────────
 
-RECALL_SYSTEM = """You are an expert technical interview coach using active recall and spaced repetition techniques.
-Generate exactly {n_questions} high-quality practice questions for the given topic.
-
-Return ONLY a valid JSON array:
-[
-  {{
-    "question": "<clear, specific question>",
-    "answer": "<concise but complete answer>",
-    "difficulty": "easy | medium | hard",
-    "topic": "<topic name>",
-    "question_type": "conceptual | coding | design | behavioural"
-  }}
-]
-
-Rules:
-- Mix difficulty levels: ~30% easy, ~50% medium, ~20% hard.
-- Include both conceptual understanding and application questions.
-- For coding questions, describe the problem clearly.
-- Return valid JSON array only, no markdown, no extra text.
-"""
+RECALL_SYSTEM = """Generate exactly {n_questions} practice questions for the topic. Return ONLY a JSON array:
+[{{"question":"","answer":"","difficulty":"medium","topic":"","question_type":"conceptual"}}]
+Keep answers under 2 sentences. Return valid JSON only. No markdown."""
 
 RECALL_HUMAN = "Topic: {topic}\n\nAdditional context:\n{context}"
 
@@ -120,33 +80,25 @@ recall_prompt = ChatPromptTemplate.from_messages([
 # Curriculum Chain
 # ─────────────────────────────────────────────────────────────
 
-CURRICULUM_SYSTEM = """You are an elite placement curriculum designer who has helped 1000+ students crack top tech companies.
-Design a comprehensive, realistic day-by-day study plan.
-
-Return ONLY a valid JSON object:
+CURRICULUM_SYSTEM = """Create a {duration_days}-day placement study plan for {companies}. Return ONLY compact JSON with this exact structure:
 {{
-  "total_days": <integer>,
-  "overview": "<2-3 sentence summary of the plan>",
-  "phases": [
-    {{
-      "phase_name": "Foundation | Intermediate | Advanced | Mock Tests",
-      "start_day": <int>,
-      "end_day": <int>,
-      "focus": "<what this phase covers>"
-    }}
-  ],
+  "title": "Company Role Master Curriculum",
+  "total_days": {duration_days},
   "days": [
     {{
-      "day": <int>,
-      "theme": "<day's focus topic>",
+      "day": 1,
+      "title": "Day 1 — Topic Focus",
+      "date": "Day 1",
+      "focus_topics": ["DSA", "Core CS"],
       "tasks": [
         {{
-          "title": "<task name>",
-          "description": "<what to do, be specific>",
-          "resource_url": "<url or null>",
-          "estimated_minutes": <int>,
-          "difficulty": "easy | medium | hard",
-          "category": "DSA | System Design | Core CS | Aptitude | Behavioural | Mock"
+          "task_id": "d1_1",
+          "title": "Task title",
+          "type": "coding",
+          "difficulty": "Medium",
+          "estimated_minutes": 90,
+          "status": "pending",
+          "priority": "high"
         }}
       ]
     }}
@@ -154,21 +106,17 @@ Return ONLY a valid JSON object:
 }}
 
 Rules:
-- Allocate study time realistically: {study_hours_per_day} hours/day.
-- Start with fundamentals, progress to advanced topics.
-- Include company-specific topics based on: {companies}.
-- Factor in vault context to avoid duplicating known material.
-- Return valid JSON only, no markdown, no extra text.
-"""
+- task type must be one of: "coding", "aptitude", "core"
+- difficulty must be one of: "Easy", "Medium", "Hard"
+- status must always be "pending"
+- priority must be one of: "high", "medium", "low"
+- task_id must follow pattern: d{{day}}_{{index}} e.g. d1_1, d1_2, d2_1
+- Generate ALL {duration_days} days. 3-4 tasks per day.
+- Return valid JSON only. No markdown. No extra text."""
 
-CURRICULUM_HUMAN = """Target companies: {companies}
-Target roles: {roles}
-Preparation duration: {duration_days} days
-Study hours per day: {study_hours_per_day}
-Skill gaps: {skill_gaps}
-Current skills (skip or briefly cover): {current_skills}
-Company intel summary: {company_intel}
-Vault context (student's existing materials): {vault_context}"""
+CURRICULUM_HUMAN = """Companies: {companies} | Roles: {roles} | Days: {duration_days} | Hours/day: {study_hours_per_day}
+Interview Rounds: {process_rounds}
+Skill gaps: {skill_gaps} | Current skills: {current_skills}"""
 
 curriculum_prompt = ChatPromptTemplate.from_messages([
     SystemMessagePromptTemplate.from_template(CURRICULUM_SYSTEM),

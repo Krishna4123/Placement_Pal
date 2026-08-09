@@ -23,8 +23,8 @@ from app.utils.prompts import recall_prompt
 
 logger = logging.getLogger(__name__)
 
-# Default number of questions to generate per topic
-DEFAULT_N_QUESTIONS = 10
+# Default number of questions to generate per topic (keep small for faster LLM response)
+DEFAULT_N_QUESTIONS = 3
 
 
 def build_recall_chain() -> Runnable:

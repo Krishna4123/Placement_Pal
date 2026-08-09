@@ -140,11 +140,22 @@ def ingest_documents(
     # Build LangChain Documents
     docs: list[Document] = []
     for i, text in enumerate(texts):
-        meta = (metadatas[i] if metadatas and i < len(metadatas) else {})
-        docs.append(Document(page_content=text, metadata=meta))
+        if text and text.strip():
+            meta = (metadatas[i] if metadatas and i < len(metadatas) else {})
+            docs.append(Document(page_content=text, metadata=meta))
 
-    # Split into chunks
-    chunks = splitter.split_documents(docs)
+    if not docs:
+        logger.warning("No non-empty text content provided for Chroma ingestion.")
+        return []
+
+    # Split into chunks and keep non-empty chunks
+    split_chunks = splitter.split_documents(docs)
+    chunks = [c for c in split_chunks if c.page_content and c.page_content.strip()]
+
+    if not chunks:
+        logger.warning("No non-empty chunks to ingest after document splitting.")
+        return []
+
     logger.info("Ingesting %d chunks (%d source docs) into Chroma …", len(chunks), len(docs))
 
     ids = vs.add_documents(chunks)

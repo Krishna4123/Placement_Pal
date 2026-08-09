@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o"
     llm_temperature: float = 0.0
 
+    # ── Gemini (separate client for notification parsing) ─────
+    # Used ONLY for fast notification parsing — fully isolated from OpenAI pipeline.
+    gemini_api_key: str = ""           # Leave blank to fall back to regex parser
+    gemini_model: str = "gemini-2.5-flash"
+
     # ── Tavily Search ─────────────────────────────────────────
     tavily_api_key: str = "tvly-placeholder"
 

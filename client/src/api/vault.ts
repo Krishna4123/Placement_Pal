@@ -34,6 +34,14 @@ export const vaultApi = {
     const res = await apiClient.post('/vault/topics', payload);
     return res.data;
   },
+  listTopics: async () => {
+    const res = await apiClient.get<{ success: boolean; data: any[] }>('/vault/topics');
+    return res.data;
+  },
+  listFiles: async () => {
+    const res = await apiClient.get<{ success: boolean; data: any[] }>('/vault/files');
+    return res.data;
+  },
   deleteTopic: async (topicId: string) => {
     const res = await apiClient.delete(`/vault/topics/${topicId}`);
     return res.data;

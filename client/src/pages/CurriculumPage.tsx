@@ -6,7 +6,7 @@ import { pipelineApi } from "../api/pipeline";
 import { planApi } from "../api/plan";
 
 export const CurriculumPage: React.FC = () => {
-  const { sessionId, profile } = useSession();
+  const { sessionId, profile, placementState, refreshState } = useSession();
   const [activePlatforms, setActivePlatforms] = useState<string[]>(["leetcode", "gfg"]);
   const [tab, setTab] = useState("all");
   const [generating, setGenerating] = useState(false);
@@ -18,32 +18,19 @@ export const CurriculumPage: React.FC = () => {
     { id: "gfg", label: "GeeksforGeeks", icon: BookOpen, activeC: "bg-teal-50 border-teal-300 text-teal-700", inactiveC: "bg-white border-gray-200 text-gray-500 hover:bg-gray-50" },
   ];
 
-  const [plan, setPlan] = useState([
-    {
-      day: 1, date: "Jan 15",
-      tasks: [
-        { id: "c-1", title: "Arrays & Two Pointers — LeetCode #1, 15, 11", type: "coding", diff: "Easy", time: "2h", done: true },
-        { id: "c-2", title: "OS: Process Concepts & PCB", type: "core", diff: "Medium", time: "1.5h", done: true },
-        { id: "c-3", title: "Aptitude: Percentages & Ratios", type: "aptitude", diff: "Easy", time: "45m", done: false },
-      ],
-    },
-    {
-      day: 2, date: "Jan 16",
-      tasks: [
-        { id: "c-4", title: "Linked Lists — Reverse, Detect Cycle, Merge", type: "coding", diff: "Medium", time: "2h", done: false },
-        { id: "c-5", title: "DBMS: Normalization (1NF–3NF–BCNF)", type: "core", diff: "Medium", time: "1.5h", done: false },
-        { id: "c-6", title: "Aptitude: Time, Work & Pipes", type: "aptitude", diff: "Easy", time: "45m", done: false },
-      ],
-    },
-    {
-      day: 3, date: "Jan 17",
-      tasks: [
-        { id: "c-7", title: "Stacks & Queues — Monotonic, Min Stack", type: "coding", diff: "Medium", time: "2h", done: false },
-        { id: "c-8", title: "CN: OSI Model & TCP/IP Layers", type: "core", diff: "Medium", time: "1h", done: false },
-        { id: "c-9", title: "Aptitude: Number Series & Sequences", type: "aptitude", diff: "Medium", time: "45m", done: false },
-      ],
-    },
-  ]);
+  const rawDays = placementState?.curriculum?.days || [];
+  const plan = rawDays.length > 0 ? rawDays.map((d: any, idx: number) => ({
+    day: d.day || idx + 1,
+    date: d.date || `Day ${d.day || idx + 1}`,
+    tasks: (d.tasks || []).map((t: any, tidx: number) => ({
+      id: t.task_id || t.id || `task_${idx}_${tidx}`,
+      title: t.title || t.name,
+      type: t.type || "coding",
+      diff: t.difficulty || "Medium",
+      time: t.estimated_minutes ? `${t.estimated_minutes}m` : "1h",
+      done: t.status === "done" || !!t.done,
+    })),
+  })) : [];
 
   const handleGeneratePlan = async () => {
     setGenerating(true);
@@ -52,36 +39,32 @@ export const CurriculumPage: React.FC = () => {
         session_id: sessionId,
         additional_context: { platforms: activePlatforms },
       });
+      await refreshState();
     } catch (err) {
       console.error("Failed to generate plan via Phase 2 API:", err);
-      // // TODO: backend AI graph nodes pending implementation
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleToggleTask = async (dayIndex: number, taskIndex: number, taskId: string) => {
-    const nextPlan = [...plan];
-    const targetTask = nextPlan[dayIndex].tasks[taskIndex];
-    targetTask.done = !targetTask.done;
-    setPlan(nextPlan);
-
+  const handleToggleTask = async (dayIndex: number, taskIndex: number, taskId: string, currentDone: boolean) => {
     try {
       await planApi.markTask({
         session_id: sessionId,
         task_id: taskId,
-        status: targetTask.done ? 'done' : 'pending',
+        status: !currentDone ? 'done' : 'pending',
       });
+      await refreshState();
     } catch (err) {
       console.error("Failed to mark task complete on backend:", err);
     }
   };
 
-  const filtered = (tasks: typeof plan[0]["tasks"]) => {
+  const filtered = (tasks: any[]) => {
     if (tab === "all") return tasks;
-    if (tab === "coding") return tasks.filter((t) => t.type === "coding");
-    if (tab === "aptitude") return tasks.filter((t) => t.type === "aptitude");
-    return tasks.filter((t) => t.type === "core");
+    if (tab === "coding") return tasks.filter((t: any) => t.type === "coding");
+    if (tab === "aptitude") return tasks.filter((t: any) => t.type === "aptitude");
+    return tasks.filter((t: any) => t.type === "core");
   };
 
   return (
@@ -130,7 +113,7 @@ export const CurriculumPage: React.FC = () => {
 
           {/* Timeline List */}
           <div className="space-y-5">
-            {plan.map((dayObj, dayIdx) => {
+            {plan.map((dayObj: any, dayIdx: number) => {
               const tasks = filtered(dayObj.tasks);
               if (!tasks.length) return null;
               return (
@@ -141,12 +124,12 @@ export const CurriculumPage: React.FC = () => {
                     <div className="flex-1 h-px bg-gray-100" />
                   </div>
                   <div className="space-y-2.5 pl-2">
-                    {tasks.map((task, taskIdx) => (
+                    {tasks.map((task: any, taskIdx: number) => (
                       <GlassCard key={task.id} className="p-4 flex items-start gap-3 hover:shadow-md transition-shadow">
                         <input
                           type="checkbox"
                           checked={task.done}
-                          onChange={() => handleToggleTask(dayIdx, taskIdx, task.id)}
+                          onChange={() => handleToggleTask(dayIdx, taskIdx, task.id, task.done)}
                           className="mt-0.5 accent-[#2563EB] rounded cursor-pointer"
                         />
                         <div className="flex-1">
