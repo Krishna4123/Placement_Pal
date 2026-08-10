@@ -274,11 +274,13 @@ async def company_intel_node(state: GraphState) -> dict[str, Any]:
 
 async def knowledge_vault_node(state: GraphState) -> dict[str, Any]:
     from app.database.chroma import query_documents
+    from app.services.vault_service import VaultService
 
     session_id = state.get("session_id", "?")
     intent = state.get("interpreted_intent") or {}
     companies = state.get("target_companies", [])
     roles = state.get("target_roles", [])
+    company_intel = state.get("company_intel") or {}
 
     logger.info("[Node] knowledge_vault | session=%s", session_id)
 
@@ -289,19 +291,37 @@ async def knowledge_vault_node(state: GraphState) -> dict[str, Any]:
         query_parts.append(f"{', '.join(roles)} interview topics")
     for gap in intent.get("skill_gaps", []):
         query_parts.append(gap)
+    for cdata in company_intel.values():
+        if isinstance(cdata, dict):
+            query_parts.extend(cdata.get("tech_stack", []))
 
     query = " ".join(query_parts) if query_parts else "technical interview preparation"
 
+    vault_results: list[dict[str, Any]] = []
+
+    # 1. Fetch document chunks from ChromaDB
     try:
-        results = await asyncio.to_thread(query_documents, query, n_results=8)
-        logger.info("[Node] knowledge_vault: retrieved %d docs", len(results))
-        return {"vault_context": results}
+        doc_results = await asyncio.to_thread(query_documents, query, n_results=8)
+        logger.info("[Node] knowledge_vault: retrieved %d docs from ChromaDB", len(doc_results))
+        vault_results.extend(doc_results)
     except Exception as exc:
-        logger.warning("[Node] knowledge_vault failed: %s", exc)
-        return {
-            "vault_context": [],
-            "errors": state.get("errors", []) + [f"knowledge_vault: {exc}"],
-        }
+        logger.warning("[Node] knowledge_vault ChromaDB query failed: %s", exc)
+
+    # 2. Fetch manual topics from MongoDB
+    try:
+        vault_service = VaultService()
+        manual_topics = await vault_service.list_topics()
+        logger.info("[Node] knowledge_vault: retrieved %d manual topics from MongoDB", len(manual_topics))
+        for t in manual_topics:
+            vault_results.append({
+                "content": f"Manual Topic: {t.get('name')} (Category: {t.get('category')}, Status/Difficulty: {t.get('difficulty', 'medium')})",
+                "metadata": {"source": "MongoDB Topics", "name": t.get("name"), "category": t.get("category")},
+                "score": 1.0
+            })
+    except Exception as exc:
+        logger.warning("[Node] knowledge_vault MongoDB topic fetch failed: %s", exc)
+
+    return {"vault_context": vault_results}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -318,23 +338,38 @@ async def generate_recall_node(state: GraphState) -> dict[str, Any]:
 
     logger.info("[Node] generate_recall | session=%s", session_id)
 
+    # Extract company info string for prompt context
+    c_parts = []
     topics: set[str] = set()
-    for profile in company_intel.values():
+
+    for comp, profile in company_intel.items():
         if isinstance(profile, dict):
+            ov = " ".join(profile.get("overview", []))
+            tech = ", ".join(profile.get("tech_stack", []))
+            c_parts.append(f"Company {comp}: Overview: {ov} | Tech Stack: {tech}")
             topics.update(profile.get("common_topics", []))
+            topics.update(profile.get("tech_stack", []))
+
+    company_info_str = "\n".join(c_parts) if c_parts else "Target company software engineering role."
+
+    # Incorporate skill gaps and vault manual topics into topic set
     topics.update(intent.get("skill_gaps", []))
+    for v in vault_context:
+        if isinstance(v, dict) and "metadata" in v and "name" in v["metadata"]:
+            topics.add(v["metadata"]["name"])
 
     if not topics:
         topics = {"Arrays", "Dynamic Programming", "System Design", "OOPS"}
 
     context_text = "\n".join(
-        r.get("content", "") for r in vault_context[:4]
+        r.get("content", "") if isinstance(r, dict) else str(r)
+        for r in vault_context[:6]
     )
 
     topic_list = list(topics)[:6]
     async def _recall_one(topic: str) -> tuple[str, list]:
         try:
-            qs = await run_recall(topic, context=context_text, n_questions=8)
+            qs = await run_recall(topic, context=context_text, company_info=company_info_str, n_questions=3)
             return topic, qs
         except Exception as exc:
             logger.warning("[Node] generate_recall: failed for %s: %s", topic, exc)
@@ -365,6 +400,7 @@ async def curriculum_plan_node(state: GraphState) -> dict[str, Any]:
     duration_days = state.get("preparation_duration_days", 5)
     company_intel = state.get("company_intel") or {}
     vault_context = state.get("vault_context") or []
+    recall_questions = state.get("recall_questions") or []
 
     generate_next = state.get("generate_next", False)
     existing_curriculum = state.get("curriculum") or {}
@@ -398,6 +434,7 @@ async def curriculum_plan_node(state: GraphState) -> dict[str, Any]:
             current_skills=intent.get("current_skills", []),
             company_intel=company_intel,
             vault_context=vault_context,
+            recall_questions=recall_questions,
             study_hours_per_day=intent.get("preferences", {}).get("study_hours_per_day", 4.0),
             process_rounds=intent.get("process_rounds", []),
         )
@@ -416,3 +453,4 @@ async def curriculum_plan_node(state: GraphState) -> dict[str, Any]:
             "curriculum": fallback,
             "errors": state.get("errors", []) + [f"curriculum_plan: {exc}"],
         }
+

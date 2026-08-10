@@ -64,11 +64,29 @@ company_summary_prompt = ChatPromptTemplate.from_messages([
 # Recall Chain
 # ─────────────────────────────────────────────────────────────
 
-RECALL_SYSTEM = """Generate exactly {n_questions} practice questions for the topic. Return ONLY a JSON array:
-[{{"question":"","answer":"","difficulty":"medium","topic":"","question_type":"conceptual"}}]
-Keep answers under 2 sentences. Return valid JSON only. No markdown."""
+RECALL_SYSTEM = """Generate exactly {n_questions} practice questions for the topic.
+The questions must align with the target company's interview style and technical requirements.
+If Knowledge Vault notes/materials are provided, incorporate them into the questions.
+If Knowledge Vault notes are not provided or empty, rely on your knowledge of the company, tech stack, and role to generate realistic, high-quality interview questions.
 
-RECALL_HUMAN = "Topic: {topic}\n\nAdditional context:\n{context}"
+Return ONLY a JSON array:
+[
+  {{
+    "question": "Clear interview-style practice question",
+    "answer": "Concise answer under 2 sentences",
+    "difficulty": "medium",
+    "topic": "{topic}",
+    "question_type": "conceptual"
+  }}
+]
+Return valid JSON only. No markdown. No extra text."""
+
+RECALL_HUMAN = """Topic: {topic}
+Company & Tech Stack Info:
+{company_info}
+
+Knowledge Vault Notes & Study Materials (if available):
+{context}"""
 
 recall_prompt = ChatPromptTemplate.from_messages([
     SystemMessagePromptTemplate.from_template(RECALL_SYSTEM),
@@ -80,7 +98,15 @@ recall_prompt = ChatPromptTemplate.from_messages([
 # Curriculum Chain
 # ─────────────────────────────────────────────────────────────
 
-CURRICULUM_SYSTEM = """Create a {duration_days}-day placement study plan for {companies}, starting from Day {start_day} to Day {end_day}. Return ONLY compact JSON with this exact structure:
+CURRICULUM_SYSTEM = """Create a {duration_days}-day placement study plan for {companies}, starting from Day {start_day} to Day {end_day}.
+The study plan should be tailored to:
+1. Target Company Overview, tech stack, and selection process rounds (from parsed placement info).
+2. The Recall practice questions & focus topics (if available).
+3. The student's Knowledge Vault notes & study topics (if available).
+
+If Knowledge Vault notes or recall questions are sparse or missing, rely on the parsed company info, job role requirements, and core computer science / DSA syllabus to generate a complete, practical study plan.
+
+Return ONLY compact JSON with this exact structure:
 {{
   "title": "Company Role Master Curriculum",
   "total_days": {duration_days},
@@ -115,10 +141,21 @@ Rules:
 - Return valid JSON only. No markdown. No extra text."""
 
 CURRICULUM_HUMAN = """Companies: {companies} | Roles: {roles} | Days: {duration_days} | Hours/day: {study_hours_per_day}
-Interview Rounds: {process_rounds}
-Skill gaps: {skill_gaps} | Current skills: {current_skills}"""
+Selection Process Rounds: {process_rounds}
+Skill Gaps: {skill_gaps} | Current Skills: {current_skills}
+
+Company Overview & Tech Stack:
+{company_intel_str}
+
+Knowledge Vault Context (Student Notes & Topics — optional):
+{vault_context_str}
+
+Recall Focus Areas (optional):
+{recall_questions_str}"""
 
 curriculum_prompt = ChatPromptTemplate.from_messages([
     SystemMessagePromptTemplate.from_template(CURRICULUM_SYSTEM),
     HumanMessagePromptTemplate.from_template(CURRICULUM_HUMAN),
 ])
+
+

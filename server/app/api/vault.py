@@ -150,3 +150,21 @@ async def delete_topic(topic_id: str):
         message=f"Topic {topic_id} {'deleted' if deleted else 'not found'}",
         data={"topic_id": topic_id, "deleted": deleted},
     )
+
+
+@router.delete(
+    "/files/{file_id}",
+    summary="Delete a file from the knowledge vault",
+    status_code=status.HTTP_200_OK,
+)
+async def delete_file(file_id: str):
+    """
+    Remove an uploaded file record by file_id from MongoDB.
+    """
+    deleted = await vault_service.delete_file(file_id)
+    return APIResponse[dict](
+        success=deleted,
+        message=f"File {file_id} {'deleted' if deleted else 'not found'}",
+        data={"file_id": file_id, "deleted": deleted},
+    )
+

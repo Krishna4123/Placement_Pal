@@ -165,3 +165,13 @@ class VaultService:
             if "uploaded_at" in d and isinstance(d["uploaded_at"], datetime):
                 d["uploaded_at"] = d["uploaded_at"].isoformat()
         return docs
+
+    async def delete_file(self, file_id: str) -> bool:
+        """Remove an uploaded file entry by file_id from 'vault_files' collection."""
+        col = get_vault_files_collection()
+        result = await col.delete_one({"file_id": file_id})
+        deleted = result.deleted_count > 0
+        if deleted:
+            logger.info("Deleted file: %s", file_id)
+        return deleted
+
