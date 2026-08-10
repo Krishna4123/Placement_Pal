@@ -155,3 +155,13 @@ class VaultService:
         for d in docs:
             d["_id"] = str(d["_id"])
         return docs
+
+    async def list_files(self) -> list[dict[str, Any]]:
+        """Return all uploaded file entries from 'vault_files' collection."""
+        col = get_vault_files_collection()
+        cursor = col.find({}, {"_id": 0, "file_id": 1, "filename": 1, "suffix": 1, "size_bytes": 1, "chunks_ingested": 1, "uploaded_at": 1})
+        docs = await cursor.to_list(length=200)
+        for d in docs:
+            if "uploaded_at" in d and isinstance(d["uploaded_at"], datetime):
+                d["uploaded_at"] = d["uploaded_at"].isoformat()
+        return docs

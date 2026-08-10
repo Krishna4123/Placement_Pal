@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, BookOpen, Brain, GraduationCap,
   TrendingUp, Settings, Search, Bell, MessageSquare, Plus,
-  Calendar, Sparkles, X, Menu
+  Calendar, Sparkles, X, Menu, Terminal
 } from "lucide-react";
 import { ProgressBar } from "../components/common/UIElements";
 import { ChatPanel } from "../components/chat/ChatPanel";
@@ -19,6 +19,7 @@ const navItems = [
   { path: "/planner", icon: Calendar, label: "Daily Planner" },
   { path: "/progress", icon: TrendingUp, label: "Progress" },
   { path: "/settings", icon: Settings, label: "Settings" },
+  { path: "/debug", icon: Terminal, label: "Node Debugger" },
 ];
 
 const routeTitles: Record<string, string> = {
@@ -31,6 +32,7 @@ const routeTitles: Record<string, string> = {
   "/planner": "Daily Planner",
   "/progress": "Progress Analytics",
   "/settings": "Settings",
+  "/debug": "Node Debugger Sandbox",
 };
 
 export const AppLayout: React.FC = () => {

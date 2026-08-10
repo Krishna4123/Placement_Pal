@@ -41,5 +41,12 @@ class GraphState(TypedDict, total=False):
     recall_questions: Optional[list[dict[str, Any]]]
     curriculum: Optional[dict[str, Any]]
 
+    # ── Parsed notification cache ─────────────────────────────
+    parsed_notification: Optional[dict[str, Any]]
+
+    # ── Additional Context ────────────────────────────────────
+    generate_next: Optional[bool]
+    chunk_size: Optional[int]
+
     # ── Meta ──────────────────────────────────────────────────
     errors: list[str]

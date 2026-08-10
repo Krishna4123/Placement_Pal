@@ -11,32 +11,29 @@ import { planApi } from "../api/plan";
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, sessionId, placementState } = useSession();
+  const { profile, sessionId, placementState, refreshState } = useSession();
   const firstName = profile.name.split(" ")[0] || "Student";
   const activeCompany = placementState?.target_companies?.[0] || profile.targetCompany;
 
-  const initialTasks = [
-    { id: "task-1", label: "Binary Trees — LeetCode #102, 104, 107", done: false, priority: "high" },
-    { id: "task-2", label: "OS Scheduling Algorithms — GATE Notes", done: true, priority: "medium" },
-    { id: "task-3", label: "Mock Interview — System Design Round", done: false, priority: "high" },
-    { id: "task-4", label: "DBMS Transactions & Normalization", done: false, priority: "medium" },
-    { id: "task-5", label: "Aptitude — Time, Work & Probability", done: true, priority: "low" },
-  ];
+  const rawDays = placementState?.curriculum?.days || [];
+  const currentDayNum = placementState?.current_day || 1;
+  const currentDayObj = rawDays.find((d: any) => d.day === currentDayNum) || rawDays[0] || { tasks: [] };
 
-  const [doneMap, setDoneMap] = useState<Record<string, boolean>>(
-    Object.fromEntries(initialTasks.map((t) => [t.id, t.done]))
-  );
+  const initialTasks = (currentDayObj.tasks || []).map((t: any, idx: number) => ({
+    id: t.task_id || t.id || `dash_${idx}`,
+    label: t.title || t.name,
+    done: t.status === "done" || !!t.done,
+    priority: t.priority || "medium",
+  }));
 
-  const toggleTask = async (taskId: string) => {
-    const nextStatus = !doneMap[taskId];
-    setDoneMap((prev) => ({ ...prev, [taskId]: nextStatus }));
-    
+  const toggleTask = async (taskId: string, currentDone: boolean) => {
     try {
       await planApi.markTask({
         session_id: sessionId,
         task_id: taskId,
-        status: nextStatus ? 'done' : 'pending',
+        status: !currentDone ? 'done' : 'pending',
       });
+      await refreshState();
     } catch (err) {
       console.error('Failed to sync task status with backend:', err);
     }
@@ -47,7 +44,7 @@ export const DashboardPage: React.FC = () => {
     { day: "Thu", h: 2 }, { day: "Fri", h: 6 }, { day: "Sat", h: 4.5 }, { day: "Sun", h: 3 },
   ];
 
-  const completedCount = Object.values(doneMap).filter(Boolean).length;
+  const completedCount = initialTasks.filter((t: any) => t.done).length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-8">
@@ -103,29 +100,32 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-semibold text-[#111827]">Today's Tasks</h3>
-                <p className="text-xs text-[#6B7280] mt-0.5">{completedCount} of 5 completed</p>
+                <p className="text-xs text-[#6B7280] mt-0.5">{initialTasks.filter((t: any) => t.done).length} of {initialTasks.length} completed</p>
               </div>
               <Btn size="sm" variant="ghost" onClick={() => navigate("/planner")}>
                 <Clock className="w-3.5 h-3.5" /> Full Planner
               </Btn>
             </div>
             <div className="space-y-1">
-              {initialTasks.map((task) => (
+              {initialTasks.map((task: any) => (
                 <button
                   key={task.id}
-                  onClick={() => toggleTask(task.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors cursor-pointer ${doneMap[task.id] ? "bg-gray-50" : "hover:bg-gray-50"}`}
+                  onClick={() => toggleTask(task.id, task.done)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors cursor-pointer ${task.done ? "bg-gray-50" : "hover:bg-gray-50"}`}
                 >
-                  {doneMap[task.id]
+                  {task.done
                     ? <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
                     : <Circle className="w-4 h-4 text-gray-300 shrink-0" />
                   }
-                  <span className={`text-sm flex-1 ${doneMap[task.id] ? "line-through text-[#9CA3AF]" : "text-[#374151]"}`}>{task.label}</span>
+                  <span className={`text-sm flex-1 ${task.done ? "line-through text-[#9CA3AF]" : "text-[#374151]"}`}>{task.label}</span>
                   <Badge color={task.priority === "high" ? "red" : task.priority === "medium" ? "amber" : "gray"}>
                     {task.priority}
                   </Badge>
                 </button>
               ))}
+              {initialTasks.length === 0 && (
+                <div className="text-center py-6 text-xs text-[#9CA3AF]">No tasks scheduled for today. Create a new session or generate a plan to get started!</div>
+              )}
             </div>
           </GlassCard>
 

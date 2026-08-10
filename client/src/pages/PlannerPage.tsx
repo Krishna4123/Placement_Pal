@@ -5,33 +5,32 @@ import { useSession } from "../context/SessionContext";
 import { planApi } from "../api/plan";
 
 export const PlannerPage: React.FC = () => {
-  const { sessionId } = useSession();
+  const { sessionId, placementState, refreshState } = useSession();
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const dates = [13, 14, 15, 16, 17, 18, 19];
-  const [selectedDay, setSelectedDay] = useState(2);
+  const [selectedDay, setSelectedDay] = useState(0);
 
-  const initialTasks = [
-    { id: "p-1", title: "Binary Trees — LeetCode #102, 104, 107", type: "coding", priority: "high", diff: "Medium", time: "2h", done: false },
-    { id: "p-2", title: "OS Scheduling Algorithms — GATE Notes", type: "core", priority: "high", diff: "Medium", time: "1.5h", done: true },
-    { id: "p-3", title: "Mock Interview — System Design Round", type: "coding", priority: "high", diff: "Hard", time: "2h", done: false },
-    { id: "p-4", title: "Aptitude: Probability & Permutation", type: "aptitude", priority: "medium", diff: "Easy", time: "45m", done: false },
-    { id: "p-5", title: "DBMS Normalization Revision", type: "core", priority: "medium", diff: "Medium", time: "1h", done: true },
-  ];
+  const rawDays = placementState?.curriculum?.days || [];
+  const activeDayObj = rawDays.find((d: any) => d.day === selectedDay + 1) || rawDays[0] || { tasks: [] };
 
-  const [doneMap, setDoneMap] = useState<Record<string, boolean>>(
-    Object.fromEntries(initialTasks.map((t) => [t.id, t.done]))
-  );
+  const initialTasks = (activeDayObj.tasks || []).map((t: any, idx: number) => ({
+    id: t.task_id || t.id || `p_${selectedDay}_${idx}`,
+    title: t.title || t.name,
+    type: t.type || "coding",
+    priority: t.priority || "medium",
+    diff: t.difficulty || "Medium",
+    time: t.estimated_minutes ? `${t.estimated_minutes}m` : "1h",
+    done: t.status === "done" || !!t.done,
+  }));
 
-  const toggle = async (id: string) => {
-    const nextState = !doneMap[id];
-    setDoneMap((m) => ({ ...m, [id]: nextState }));
-
+  const toggle = async (id: string, currentDone: boolean) => {
     try {
       await planApi.markTask({
         session_id: sessionId,
         task_id: id,
-        status: nextState ? 'done' : 'pending',
+        status: !currentDone ? 'done' : 'pending',
       });
+      await refreshState();
     } catch (err) {
       console.error("Failed to mark task complete on backend:", err);
     }
@@ -44,13 +43,14 @@ export const PlannerPage: React.FC = () => {
         session_id: sessionId,
         target_day: index + 1,
       });
+      await refreshState();
     } catch (err) {
       console.error("Failed to advance day on backend:", err);
     }
   };
 
-  const pending = initialTasks.filter((t) => !doneMap[t.id]);
-  const completed = initialTasks.filter((t) => doneMap[t.id]);
+  const pending = initialTasks.filter((t: any) => !t.done);
+  const completed = initialTasks.filter((t: any) => t.done);
 
   return (
     <div className="max-w-5xl mx-auto pb-8 space-y-5">
@@ -100,13 +100,13 @@ export const PlannerPage: React.FC = () => {
             <span className="text-sm font-normal text-[#9CA3AF]">({pending.length} remaining)</span>
           </h3>
           <div className="space-y-3">
-            {pending.map((task) => (
+            {pending.map((task: any) => (
               <GlassCard key={task.id} className="p-4">
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     checked={false}
-                    onChange={() => toggle(task.id)}
+                    onChange={() => toggle(task.id, false)}
                     className="mt-0.5 accent-[#2563EB] cursor-pointer"
                   />
                   <div className="flex-1">
@@ -143,13 +143,13 @@ export const PlannerPage: React.FC = () => {
             <span className="text-sm font-normal text-[#9CA3AF]">({completed.length} done)</span>
           </h3>
           <div className="space-y-3">
-            {completed.map((task) => (
+            {completed.map((task: any) => (
               <GlassCard key={task.id} className="p-4 opacity-65">
                 <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     checked
-                    onChange={() => toggle(task.id)}
+                    onChange={() => toggle(task.id, true)}
                     className="mt-0.5 accent-[#22C55E] cursor-pointer"
                   />
                   <div className="flex-1">

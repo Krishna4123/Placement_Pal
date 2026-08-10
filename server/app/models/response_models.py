@@ -80,6 +80,18 @@ class AdvanceDayResponse(BaseModel):
     current_day: int
 
 
+class ResourceLink(BaseModel):
+    title: str
+    url: str
+    source: str = ""
+
+
+class TaskResourcesResponse(BaseModel):
+    task_title: str
+    task_type: str
+    resources: list[ResourceLink]
+
+
 # ── /state ────────────────────────────────────────────────────
 
 class StateResponse(BaseModel):

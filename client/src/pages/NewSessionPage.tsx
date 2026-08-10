@@ -5,28 +5,19 @@ import { GlassCard, Btn } from "../components/common/UIElements";
 import { useSession } from "../context/SessionContext";
 import { pipelineApi } from "../api/pipeline";
 import { vaultApi } from "../api/vault";
+import { parseApi } from "../api/parse";
 
 export const NewSessionPage: React.FC = () => {
   const navigate = useNavigate();
-  const { sessionId, profile, setProfile, startNewSession } = useSession();
+  const { sessionId, profile, setProfile, startNewSession, refreshState, applyParsedNotification } = useSession();
 
   const [notifText, setNotifText] = useState("");
   const [newTopic, setNewTopic] = useState("");
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState([
-    { name: "GATE_CS_Notes_2024.pdf", size: "4.2 MB", color: "text-red-500" },
-    { name: "DSA_Cheatsheet.docx", size: "1.8 MB", color: "text-blue-500" },
-  ]);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; color: string }>>([]);
 
-  const [topics, setTopics] = useState([
-    { id: 1, name: "Data Structures & Algorithms", status: "known" },
-    { id: 2, name: "Operating Systems", status: "weak" },
-    { id: 3, name: "Database Management Systems", status: "learning" },
-    { id: 4, name: "Computer Networks", status: "weak" },
-    { id: 5, name: "System Design", status: "learning" },
-    { id: 6, name: "OOP Concepts", status: "known" },
-  ]);
+  const [topics, setTopics] = useState<Array<{ id: number; name: string; status: string }>>([]);
 
   const statusClasses: Record<string, string> = {
     known: "bg-green-50 text-green-700 border-green-200",
@@ -64,41 +55,50 @@ export const NewSessionPage: React.FC = () => {
   const processNotification = async () => {
     setProcessing(true);
     
-    // Extract target company name if mentioned in text (or default to Google)
-    let detectedCompany = profile.targetCompany;
-    if (notifText.toLowerCase().includes("microsoft")) detectedCompany = "Microsoft";
-    else if (notifText.toLowerCase().includes("amazon")) detectedCompany = "Amazon";
-    else if (notifText.toLowerCase().includes("google")) detectedCompany = "Google";
-    else if (notifText.toLowerCase().includes("atlassian")) detectedCompany = "Atlassian";
-
-    startNewSession(detectedCompany);
+    const newSessionId = startNewSession();
 
     try {
-      // Trigger Phase 1 API
-      await pipelineApi.runPhase1({
-        session_id: sessionId,
-        user_message: notifText || "Standard placement prep session for SDE role.",
-        target_companies: [detectedCompany],
+      // ── STEP 1: Fast Gemini/Regex parse (generates data instantly) ────────
+      let parsedCompany = profile.targetCompany || "Target Company";
+      if (notifText.trim()) {
+        try {
+          const parsed = await parseApi.parseNotification(newSessionId, notifText);
+          applyParsedNotification(parsed, parsed.company || undefined);
+          if (parsed.company) parsedCompany = parsed.company;
+        } catch (parseErr) {
+          console.warn("Parse failed, continuing:", parseErr);
+          const match = notifText.match(/([A-Z][A-Za-z0-9]+)\s+(?:is|will|campus|placement|drive)/i);
+          if (match) parsedCompany = match[1];
+        }
+      }
+
+      // Fetch state so the parsed company_intel (overview, tips) loads into context
+      await refreshState(newSessionId);
+
+      // Navigate ONLY after the parsed data is generated and loaded!
+      navigate("/company");
+
+      // ── STEP 2: LLM Phase 1 + Phase 2 (runs async in background for curriculum/recall) ──
+      pipelineApi.runPhase1({
+        session_id: newSessionId,
+        user_message: notifText || `Placement prep session for ${parsedCompany}`,
+        target_companies: [parsedCompany],
         target_roles: [profile.targetRole],
         preparation_duration_days: profile.daysRemaining,
+      }).then(() => {
+        pipelineApi.runPhase2({ session_id: newSessionId }).then(() => {
+          refreshState(newSessionId);
+        });
+      }).catch(err => {
+        console.warn("Background pipeline failed (non-critical):", err);
       });
 
-      // Trigger Phase 2 API
-      await pipelineApi.runPhase2({
-        session_id: sessionId,
-      });
-
-      setProfile((prev) => ({
-        ...prev,
-        targetCompany: detectedCompany,
-      }));
     } catch (err) {
-      console.error("Pipeline API error (backend graph execution):", err);
+      console.error("Session start error:", err);
+      navigate("/company");
     } finally {
-      await new Promise((r) => setTimeout(r, 1500));
       setProcessing(false);
       setDone(true);
-      setTimeout(() => navigate("/company"), 1200);
     }
   };
 

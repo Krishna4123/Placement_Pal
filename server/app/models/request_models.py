@@ -69,3 +69,10 @@ class AdvanceDayRequest(BaseModel):
         default=None,
         description="If omitted, advances to current_day + 1.",
     )
+
+
+class TaskResourcesRequest(BaseModel):
+    """Request body for POST /plan/task-resources."""
+
+    task_title: str = Field(..., min_length=1, description="The title of the task to fetch resources for.")
+    task_type: str = Field(default="coding", description="One of: coding, aptitude, core.")

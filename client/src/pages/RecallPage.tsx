@@ -6,7 +6,9 @@ import { useSession } from "../context/SessionContext";
 type SubjectColor = "blue" | "green" | "purple" | "amber";
 
 export const RecallPage: React.FC = () => {
-  const { profile } = useSession();
+  const { profile, placementState } = useSession();
+
+  const recallFromState = placementState?.recall_questions || [];
 
   const subjects: Array<{
     id: string; label: string; icon: React.ElementType; color: SubjectColor;
@@ -83,31 +85,48 @@ export const RecallPage: React.FC = () => {
         })}
       </div>
 
-      {/* Key Concepts */}
+      {/* Key Concepts / AI Questions */}
       <GlassCard className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[#111827]">{active.label} — Key Concepts to Revise</h3>
+          <h3 className="font-semibold text-[#111827]">
+            {recallFromState.length > 0 ? "AI Generated Recall Questions" : `${active.label} — Key Concepts to Revise`}
+          </h3>
           <Badge color="blue">AI Generated</Badge>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {active.topics.map((topic, i) => (
-            <div key={topic} className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
-              <div className="flex items-start justify-between gap-2 mb-1.5">
-                <div className="text-sm font-medium text-[#374151]">{topic}</div>
-                <Badge color={i < active.weak ? "red" : i < active.weak + 2 ? "amber" : "green"}>
-                  {i < active.weak ? "Weak" : i < active.weak + 2 ? "Review" : "Strong"}
-                </Badge>
+        {recallFromState.length > 0 ? (
+          <div className="space-y-4">
+            {recallFromState.map((rq: any, idx: number) => (
+              <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+                <div className="text-sm font-semibold text-[#111827]">{rq.topic || `Topic ${idx + 1}`}</div>
+                <ul className="list-disc pl-5 text-xs text-[#374151] space-y-1">
+                  {(rq.questions || []).map((q: any, qidx: number) => (
+                    <li key={qidx}>{typeof q === 'string' ? q : q.question || JSON.stringify(q)}</li>
+                  ))}
+                </ul>
               </div>
-              <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                {i < active.weak
-                  ? "Priority: spend extra time here. Review theory and solve past year questions."
-                  : i < active.weak + 2
-                  ? "Near-mastery: do a quick 20-min revision and practice 3–5 problems."
-                  : "Well covered: a brief recap before the interview will suffice."}
-              </p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {active.topics.map((topic, i) => (
+              <div key={topic} className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="text-sm font-medium text-[#374151]">{topic}</div>
+                  <Badge color={i < active.weak ? "red" : i < active.weak + 2 ? "amber" : "green"}>
+                    {i < active.weak ? "Weak" : i < active.weak + 2 ? "Review" : "Strong"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-[#9CA3AF] leading-relaxed">
+                  {i < active.weak
+                    ? "Priority: spend extra time here. Review theory and solve past year questions."
+                    : i < active.weak + 2
+                    ? "Near-mastery: do a quick 20-min revision and practice 3–5 problems."
+                    : "Well covered: a brief recap before the interview will suffice."}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </GlassCard>
     </div>
   );

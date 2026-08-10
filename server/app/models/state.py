@@ -63,6 +63,12 @@ class PlacementState(BaseModel):
         description="Day-by-day study plan produced by CurriculumArchitect.",
     )
 
+    # ── Parsed notification cache ─────────────────────────────
+    parsed_notification: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Raw structured data from the notification parser, cached for the frontend.",
+    )
+
     # ── Metadata ──────────────────────────────────────────────
     phase: SessionPhase = Field(default=SessionPhase.INIT)
     errors: list[str] = Field(default_factory=list)

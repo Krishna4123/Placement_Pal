@@ -57,11 +57,14 @@ async def run_curriculum(
     companies: list[str],
     roles: list[str],
     duration_days: int,
+    start_day: int = 1,
+    end_day: int = 5,
     skill_gaps: list[str] | None = None,
     current_skills: list[str] | None = None,
     company_intel: dict[str, Any] | None = None,
     vault_context: list[dict[str, Any]] | None = None,
     study_hours_per_day: float = 4.0,
+    process_rounds: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Generate a complete day-by-day placement curriculum.
@@ -75,6 +78,7 @@ async def run_curriculum(
         company_intel:       Structured company data from CompanyChain.
         vault_context:       Relevant docs retrieved from ChromaDB.
         study_hours_per_day: Available study time per day.
+        process_rounds:      List of selection stages to prepare for.
 
     Returns:
         Curriculum dict with 'total_days', 'phases', 'days' etc.
@@ -88,13 +92,11 @@ async def run_curriculum(
         "companies": ", ".join(companies) if companies else "General Tech",
         "roles": ", ".join(roles) if roles else "Software Engineer",
         "duration_days": duration_days,
+        "start_day": start_day,
+        "end_day": end_day,
         "study_hours_per_day": study_hours_per_day,
-        "skill_gaps": json.dumps(skill_gaps or []),
-        "current_skills": json.dumps(current_skills or []),
-        "company_intel": json.dumps(company_intel or {}, indent=2),
-        "vault_context": json.dumps(
-            [r.get("content", r) for r in (vault_context or [])],
-            indent=2,
-        ),
+        "skill_gaps": ", ".join(skill_gaps or []) or "None specified",
+        "current_skills": ", ".join(current_skills or []) or "None specified",
+        "process_rounds": ", ".join(process_rounds or []) if process_rounds else "None specified",
     })
     return result

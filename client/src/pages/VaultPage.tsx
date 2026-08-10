@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FileText, Hash, Folder, Sparkles, Search, RefreshCw, Send, Bot,
   Upload, Eye, X, Plus
@@ -13,21 +13,47 @@ export const VaultPage: React.FC = () => {
   const [newTopicName, setNewTopicName] = useState("");
   const [newTopicSubject, setNewTopicSubject] = useState("OS");
 
-  const [files, setFiles] = useState([
-    { id: "1", name: "GATE_CS_2024_Complete.pdf", size: "8.4 MB", type: "PDF", date: "Jan 12", topics: 24, color: "text-red-500" },
-    { id: "2", name: "DSA_Cheatsheet.docx", size: "1.8 MB", type: "DOCX", date: "Jan 10", topics: 18, color: "text-blue-500" },
-    { id: "3", name: "OS_Tanenbaum_Notes.txt", size: "0.3 MB", type: "TXT", date: "Jan 8", topics: 12, color: "text-gray-500" },
-    { id: "4", name: "CN_Kurose_Ross.pdf", size: "5.1 MB", type: "PDF", date: "Jan 5", topics: 15, color: "text-red-500" },
-  ]);
+  const [files, setFiles] = useState<Array<{ id: string; name: string; size: string; type: string; date: string; topics: number; color: string }>>([]);
 
-  const [manualTopics, setManualTopics] = useState([
-    { id: "t1", name: "Binary Trees", subject: "DSA", status: "known" },
-    { id: "t2", name: "Process Scheduling", subject: "OS", status: "weak" },
-    { id: "t3", name: "SQL Joins", subject: "DBMS", status: "learning" },
-    { id: "t4", name: "TCP/IP Model", subject: "CN", status: "known" },
-    { id: "t5", name: "Deadlocks", subject: "OS", status: "weak" },
-    { id: "t6", name: "Inheritance & Polymorphism", subject: "OOP", status: "known" },
-  ]);
+  const [manualTopics, setManualTopics] = useState<Array<{ id: string; name: string; subject: string; status: string }>>([]);
+
+  const loadVaultData = async () => {
+    try {
+      const [fRes, tRes] = await Promise.all([
+        vaultApi.listFiles(),
+        vaultApi.listTopics(),
+      ]);
+      if (fRes && fRes.data) {
+        setFiles(
+          fRes.data.map((f: any) => ({
+            id: f.file_id || f._id,
+            name: f.filename,
+            size: f.size_bytes ? (f.size_bytes / (1024 * 1024)).toFixed(1) + " MB" : "1.0 MB",
+            type: f.suffix?.toUpperCase().replace(".", "") || "FILE",
+            date: f.uploaded_at ? new Date(f.uploaded_at).toLocaleDateString() : "Recently",
+            topics: f.chunks_ingested || 1,
+            color: f.filename?.endsWith(".pdf") ? "text-red-500" : "text-blue-500",
+          }))
+        );
+      }
+      if (tRes && tRes.data) {
+        setManualTopics(
+          tRes.data.map((t: any) => ({
+            id: t._id || t.topic_id,
+            name: t.name,
+            subject: t.category || "General",
+            status: t.difficulty === "easy" ? "known" : t.difficulty === "hard" ? "weak" : "learning",
+          }))
+        );
+      }
+    } catch (err) {
+      console.warn("Vault list error:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadVaultData();
+  }, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
