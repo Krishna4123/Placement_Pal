@@ -1,20 +1,90 @@
 import React, { useState } from "react";
-import { Sparkles, ChevronDown, Clock, ExternalLink, CheckCircle } from "lucide-react";
+import { Sparkles, ChevronLeft, ChevronRight, Clock, CheckCircle, CalendarX, AlertCircle, ArrowRight } from "lucide-react";
 import { GlassCard, Badge, Btn } from "../components/common/UIElements";
 import { useSession } from "../context/SessionContext";
 import { planApi } from "../api/plan";
+import { useNavigate } from "react-router-dom";
 
 export const PlannerPage: React.FC = () => {
-  const { sessionId, placementState, refreshState } = useSession();
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const dates = [13, 14, 15, 16, 17, 18, 19];
-  const [selectedDay, setSelectedDay] = useState(0);
+  const navigate = useNavigate();
+  const { profile, sessionId, placementState, refreshState } = useSession();
+  
+  // Base week view date
+  const [baseDate, setBaseDate] = useState<Date>(new Date());
+  // Selected calendar date (defaults to today)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
+  const activeCompany = placementState?.target_companies?.[0] || profile.targetCompany;
+
+  // Session start date (normalized to 00:00:00)
+  const sessionCreated = placementState?.created_at ? new Date(placementState.created_at) : new Date();
+  const startDate = new Date(sessionCreated);
+  startDate.setHours(0, 0, 0, 0);
+
+  // Real curriculum task days & total plan duration
   const rawDays = placementState?.curriculum?.days || [];
-  const activeDayObj = rawDays.find((d: any) => d.day === selectedDay + 1) || rawDays[0] || { tasks: [] };
+  const totalPlanDays = rawDays.length > 0 
+    ? rawDays.length 
+    : (placementState?.preparation_duration_days || profile.daysRemaining || 14);
+
+  // Plan end date
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + totalPlanDays - 1);
+
+  // Calculate day number relative to startDate for currently selected date
+  const normalizedSelected = new Date(selectedDate);
+  normalizedSelected.setHours(0, 0, 0, 0);
+
+  const daysDiffFromStart = Math.round((normalizedSelected.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const currentDayNumber = daysDiffFromStart + 1;
+
+  // Boundary checks
+  const isBeforePlan = currentDayNumber < 1;
+  const isAfterPlan = currentDayNumber > totalPlanDays;
+  const isPlanActive = !isBeforePlan && !isAfterPlan;
+
+  // Helper to compute Monday-to-Sunday 7-day strip for baseDate
+  const getWeekDays = (currDate: Date) => {
+    const d = new Date(currDate);
+    const day = d.getDay(); // 0 (Sun) to 6 (Sat)
+    const diffToMonday = (day + 6) % 7; // Distance from Monday
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - diffToMonday);
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const dayObj = new Date(monday);
+      dayObj.setDate(monday.getDate() + i);
+      return dayObj;
+    });
+  };
+
+  const weekDays = getWeekDays(baseDate);
+
+  // Month & Year header from baseDate
+  const currentMonthYear = baseDate.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const handlePrevWeek = () => {
+    const prev = new Date(baseDate);
+    prev.setDate(baseDate.getDate() - 7);
+    setBaseDate(prev);
+  };
+
+  const handleNextWeek = () => {
+    const next = new Date(baseDate);
+    next.setDate(baseDate.getDate() + 7);
+    setBaseDate(next);
+  };
+
+  // Retrieve current day's object if within plan boundaries
+  const activeDayObj = isPlanActive
+    ? (rawDays.find((d: any) => d.day === currentDayNumber) || rawDays[currentDayNumber - 1] || { tasks: [] })
+    : { tasks: [] };
 
   const initialTasks = (activeDayObj.tasks || []).map((t: any, idx: number) => ({
-    id: t.task_id || t.id || `p_${selectedDay}_${idx}`,
+    id: t.task_id || t.id || `p_${currentDayNumber}_${idx}`,
     title: t.title || t.name,
     type: t.type || "coding",
     priority: t.priority || "medium",
@@ -28,7 +98,7 @@ export const PlannerPage: React.FC = () => {
       await planApi.markTask({
         session_id: sessionId,
         task_id: id,
-        status: !currentDone ? 'done' : 'pending',
+        status: !currentDone ? "done" : "pending",
       });
       await refreshState();
     } catch (err) {
@@ -36,138 +106,238 @@ export const PlannerPage: React.FC = () => {
     }
   };
 
-  const handleDaySelect = async (index: number) => {
-    setSelectedDay(index);
-    try {
-      await planApi.advanceDay({
-        session_id: sessionId,
-        target_day: index + 1,
-      });
-      await refreshState();
-    } catch (err) {
-      console.error("Failed to advance day on backend:", err);
+  const handleDateSelect = async (dateObj: Date, calculatedDayNum: number) => {
+    setSelectedDate(dateObj);
+    if (calculatedDayNum >= 1 && calculatedDayNum <= totalPlanDays) {
+      try {
+        await planApi.advanceDay({
+          session_id: sessionId,
+          target_day: calculatedDayNum,
+        });
+        await refreshState();
+      } catch (err) {
+        console.error("Failed to advance day on backend:", err);
+      }
     }
   };
 
   const pending = initialTasks.filter((t: any) => !t.done);
   const completed = initialTasks.filter((t: any) => t.done);
 
+  const todayStr = new Date().toDateString();
+
   return (
     <div className="max-w-5xl mx-auto pb-8 space-y-5">
-      {/* AI banner */}
+      {/* AI schedule banner */}
       <div className="flex items-center gap-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-2xl p-4">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shrink-0">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
         <div className="flex-1 text-sm">
-          <span className="font-semibold text-[#111827]">AI Schedule Update: </span>
-          <span className="text-[#6B7280]">Missed tasks from yesterday have been rescheduled. System Design mock interview moved to today for better momentum.</span>
+          <span className="font-semibold text-[#111827]">AI Schedule Status: </span>
+          <span className="text-[#6B7280]">
+            {isPlanActive ? (
+              `Selected Date corresponds to Day ${currentDayNumber} of ${totalPlanDays} in your ${activeCompany} preparation plan.`
+            ) : isAfterPlan ? (
+              `Selected Date (Day ${currentDayNumber}) is past your ${totalPlanDays}-day preparation roadmap. Plan ended on ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`
+            ) : (
+              `Selected Date is prior to your session start date (${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}).`
+            )}
+          </span>
         </div>
         <Btn size="sm" variant="ghost" className="shrink-0 text-xs">Dismiss</Btn>
       </div>
 
-      {/* Calendar Strip */}
+      {/* Real-time Calendar Strip */}
       <GlassCard className="p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[#111827]">January 2025</h3>
-          <div className="flex gap-1">
-            <button className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronDown className="w-4 h-4 text-gray-400 rotate-90" /></button>
-            <button className="p-1.5 rounded-lg hover:bg-gray-100"><ChevronDown className="w-4 h-4 text-gray-400 -rotate-90" /></button>
+          <div>
+            <h3 className="font-semibold text-[#111827]">{currentMonthYear}</h3>
+            <p className="text-xs text-[#6B7280] mt-0.5">
+              Plan Duration: {totalPlanDays} Days ({startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={handlePrevWeek}
+              title="Previous Week"
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            </button>
+            <button 
+              onClick={() => {
+                const now = new Date();
+                setBaseDate(now);
+                setSelectedDate(now);
+              }}
+              className="px-2.5 py-1 text-xs font-medium text-[#2563EB] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+            >
+              Today
+            </button>
+            <button 
+              onClick={handleNextWeek}
+              title="Next Week"
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </button>
           </div>
         </div>
+
         <div className="grid grid-cols-7 gap-1.5">
-          {days.map((d, i) => (
-            <button
-              key={d}
-              onClick={() => handleDaySelect(i)}
-              className={`flex flex-col items-center py-2.5 rounded-xl transition-all cursor-pointer ${selectedDay === i ? "bg-[#2563EB] text-white shadow-sm" : "hover:bg-gray-50 text-[#374151]"}`}
-            >
-              <span className={`text-[10px] font-medium ${selectedDay === i ? "text-blue-100" : "text-[#9CA3AF]"}`}>{d}</span>
-              <span className={`text-base font-semibold mt-0.5 ${selectedDay === i ? "text-white" : "text-[#111827]"}`}>{dates[i]}</span>
-              {[0, 2, 4, 5].includes(i) && (
-                <span className={`w-1 h-1 rounded-full mt-1 ${selectedDay === i ? "bg-blue-200" : "bg-[#2563EB]"}`} />
-              )}
-            </button>
-          ))}
+          {weekDays.map((dateObj) => {
+            const dayLabel = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+            const dateNum = dateObj.getDate();
+            const isToday = dateObj.toDateString() === todayStr;
+            const isSelected = dateObj.toDateString() === selectedDate.toDateString();
+
+            const dNorm = new Date(dateObj);
+            dNorm.setHours(0, 0, 0, 0);
+            const dDiff = Math.round((dNorm.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+            const calculatedDayNum = dDiff + 1;
+
+            const isDayInPlan = calculatedDayNum >= 1 && calculatedDayNum <= totalPlanDays;
+
+            return (
+              <button
+                key={dateObj.toISOString()}
+                onClick={() => handleDateSelect(dateObj, calculatedDayNum)}
+                className={`flex flex-col items-center py-2.5 rounded-xl transition-all cursor-pointer relative ${
+                  isSelected 
+                    ? "bg-[#2563EB] text-white shadow-sm" 
+                    : isToday 
+                    ? "bg-blue-50 border border-blue-200 text-[#2563EB]" 
+                    : isDayInPlan
+                    ? "hover:bg-gray-50 text-[#374151]"
+                    : "opacity-50 hover:bg-gray-50 text-[#9CA3AF]"
+                }`}
+              >
+                <span className={`text-[10px] font-medium ${isSelected ? "text-blue-100" : isToday ? "text-[#2563EB]" : "text-[#9CA3AF]"}`}>
+                  {dayLabel}
+                </span>
+                <span className={`text-base font-semibold mt-0.5 ${isSelected ? "text-white" : isToday ? "text-[#2563EB]" : "text-[#111827]"}`}>
+                  {dateNum}
+                </span>
+                {isDayInPlan && (
+                  <span className={`text-[9px] font-bold mt-0.5 ${isSelected ? "text-blue-200" : "text-[#2563EB]"}`}>
+                    Day {calculatedDayNum}
+                  </span>
+                )}
+                {!isDayInPlan && (
+                  <span className={`text-[9px] mt-0.5 ${isSelected ? "text-blue-200" : "text-[#9CA3AF]"}`}>
+                    No Plan
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </GlassCard>
 
-      {/* Task Columns */}
-      <div className="grid md:grid-cols-2 gap-5">
-        <div>
-          <h3 className="font-semibold text-[#111827] mb-3">
-            Today's Tasks{" "}
-            <span className="text-sm font-normal text-[#9CA3AF]">({pending.length} remaining)</span>
-          </h3>
-          <div className="space-y-3">
-            {pending.map((task: any) => (
-              <GlassCard key={task.id} className="p-4">
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={false}
-                    onChange={() => toggle(task.id, false)}
-                    className="mt-0.5 accent-[#2563EB] cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="text-sm font-medium text-[#374151]">{task.title}</span>
-                      <Badge color={task.priority === "high" ? "red" : "amber"}>{task.priority}</Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      <Badge color={task.type === "coding" ? "blue" : task.type === "aptitude" ? "amber" : "purple"}>
-                        {task.type === "coding" ? "Coding" : task.type === "aptitude" ? "Aptitude" : "Core CS"}
-                      </Badge>
-                      <Badge color={task.diff === "Easy" ? "green" : task.diff === "Medium" ? "amber" : "red"}>{task.diff}</Badge>
-                      <span className="text-xs text-[#9CA3AF] flex items-center gap-1"><Clock className="w-3 h-3" />{task.time}</span>
-                      <a href="#" className="text-xs text-[#2563EB] flex items-center gap-1 hover:underline">
-                        <ExternalLink className="w-3 h-3" /> Resource
-                      </a>
+      {/* Task Columns OR Out-of-Bounds Plan State */}
+      {isPlanActive ? (
+        <div className="grid md:grid-cols-2 gap-5">
+          <div>
+            <h3 className="font-semibold text-[#111827] mb-3">
+              Day {currentDayNumber} Tasks{" "}
+              <span className="text-sm font-normal text-[#9CA3AF]">({pending.length} remaining)</span>
+            </h3>
+            <div className="space-y-3">
+              {pending.map((task: any) => (
+                <GlassCard key={task.id} className="p-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={false}
+                      onChange={() => toggle(task.id, false)}
+                      className="mt-0.5 accent-[#2563EB] cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="text-sm font-medium text-[#374151]">{task.title}</span>
+                        <Badge color={task.priority === "high" ? "red" : "amber"}>{task.priority}</Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge color={task.type === "coding" ? "blue" : task.type === "aptitude" ? "amber" : "purple"}>
+                          {task.type === "coding" ? "Coding" : task.type === "aptitude" ? "Aptitude" : "Core CS"}
+                        </Badge>
+                        <Badge color={task.diff === "Easy" ? "green" : task.diff === "Medium" ? "amber" : "red"}>{task.diff}</Badge>
+                        <span className="text-xs text-[#9CA3AF] flex items-center gap-1"><Clock className="w-3 h-3" />{task.time}</span>
+                      </div>
                     </div>
                   </div>
+                </GlassCard>
+              ))}
+              {pending.length === 0 && (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-2" />
+                  <p className="text-sm text-[#9CA3AF]">All tasks for Day {currentDayNumber} completed! Outstanding work! 🎉</p>
                 </div>
-              </GlassCard>
-            ))}
-            {pending.length === 0 && (
-              <div className="text-center py-8">
-                <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-2" />
-                <p className="text-sm text-[#9CA3AF]">All tasks completed! Outstanding work today! 🎉</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
 
-        <div>
-          <h3 className="font-semibold text-[#111827] mb-3">
-            Completed{" "}
-            <span className="text-sm font-normal text-[#9CA3AF]">({completed.length} done)</span>
-          </h3>
-          <div className="space-y-3">
-            {completed.map((task: any) => (
-              <GlassCard key={task.id} className="p-4 opacity-65">
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked
-                    onChange={() => toggle(task.id, true)}
-                    className="mt-0.5 accent-[#22C55E] cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm text-[#9CA3AF] line-through">{task.title}</span>
-                    <div className="flex gap-1.5 mt-1.5">
-                      <Badge color="gray">{task.time}</Badge>
-                      <Badge color="green">Completed</Badge>
+          <div>
+            <h3 className="font-semibold text-[#111827] mb-3">
+              Completed{" "}
+              <span className="text-sm font-normal text-[#9CA3AF]">({completed.length} done)</span>
+            </h3>
+            <div className="space-y-3">
+              {completed.map((task: any) => (
+                <GlassCard key={task.id} className="p-4 opacity-65">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked
+                      onChange={() => toggle(task.id, true)}
+                      className="mt-0.5 accent-[#22C55E] cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm text-[#9CA3AF] line-through">{task.title}</span>
+                      <div className="flex gap-1.5 mt-1.5">
+                        <Badge color="gray">{task.time}</Badge>
+                        <Badge color="green">Completed</Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </GlassCard>
-            ))}
-            {completed.length === 0 && (
-              <div className="text-center py-8 text-sm text-[#9CA3AF]">No completed tasks yet. Keep going! 💪</div>
-            )}
+                </GlassCard>
+              ))}
+              {completed.length === 0 && (
+                <div className="text-center py-8 text-sm text-[#9CA3AF]">No completed tasks yet for Day {currentDayNumber}. Keep going! 💪</div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* No Study Plan State when selected date is past plan duration (e.g. Day 21) */
+        <GlassCard className="p-8 text-center space-y-4 max-w-2xl mx-auto my-6">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto text-amber-600">
+            <CalendarX className="w-7 h-7" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-[#111827]">
+              No Study Plan Scheduled (Day {currentDayNumber})
+            </h3>
+            <p className="text-sm text-[#6B7280] mt-1.5 max-w-md mx-auto">
+              {isAfterPlan ? (
+                `Your ${activeCompany} preparation plan covers ${totalPlanDays} days (ending on ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}). There are no study tasks scheduled for Day ${currentDayNumber}.`
+              ) : (
+                `The selected date is before your session start date (${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}).`
+              )}
+            </p>
+          </div>
+
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <Btn variant="secondary" onClick={() => navigate("/curriculum")}>
+              View Full Curriculum
+            </Btn>
+            <Btn variant="gradient" onClick={() => navigate("/new-session")}>
+              Start New Session <ArrowRight className="w-4 h-4" />
+            </Btn>
+          </div>
+        </GlassCard>
+      )}
     </div>
   );
 };

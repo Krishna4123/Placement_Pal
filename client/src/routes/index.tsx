@@ -12,7 +12,6 @@ import { VaultPage } from '../pages/VaultPage';
 import { RecallPage } from '../pages/RecallPage';
 import { CurriculumPage } from '../pages/CurriculumPage';
 import { PlannerPage } from '../pages/PlannerPage';
-import { ProgressPage } from '../pages/ProgressPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { DebugPage } from '../pages/DebugPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -35,7 +34,6 @@ export const AppRoutes: React.FC = () => {
           <Route path="/recall" element={<RecallPage />} />
           <Route path="/curriculum" element={<CurriculumPage />} />
           <Route path="/planner" element={<PlannerPage />} />
-          <Route path="/progress" element={<ProgressPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/debug" element={<DebugPage />} />
         </Route>
