@@ -132,7 +132,7 @@ export const CurriculumPage: React.FC = () => {
 
   const targetDays =
     placementState?.preparation_duration_days ||
-    (profile?.daysRemaining ? parseInt(profile.daysRemaining, 10) : 5) ||
+    profile?.daysRemaining ||
     5;
   const isPlanGenerated = plan.length > 0;
   const needsMoreDays = plan.length < targetDays;
