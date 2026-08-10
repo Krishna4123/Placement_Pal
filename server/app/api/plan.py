@@ -12,8 +12,8 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.services.planner_service import PlannerService
-from app.models.request_models import MarkTaskRequest, AdvanceDayRequest
-from app.models.response_models import APIResponse, MarkTaskResponse, AdvanceDayResponse
+from app.models.request_models import MarkTaskRequest, AdvanceDayRequest, TaskResourcesRequest
+from app.models.response_models import APIResponse, MarkTaskResponse, AdvanceDayResponse, TaskResourcesResponse, ResourceLink
 
 router = APIRouter(prefix="/plan", tags=["Plan"])
 planner_service = PlannerService()
@@ -62,5 +62,37 @@ async def advance_day(body: AdvanceDayRequest):
     return APIResponse[AdvanceDayResponse](
         success=True,
         message="Active day advanced",
+        data=resp_data,
+    )
+
+
+@router.post(
+    "/task-resources",
+    summary="Fetch resource links for a task via Tavily web search",
+    status_code=status.HTTP_200_OK,
+    response_model=APIResponse[TaskResourcesResponse],
+)
+async def get_task_resources(body: TaskResourcesRequest):
+    """
+    Uses Tavily to search for real resource links (LeetCode, GFG, HackerRank, etc.)
+    for a given task. Returns a list of {title, url, source} objects.
+    Only URLs are returned — no content scraping is done.
+    """
+    import asyncio
+    from app.tools.web_scraper import search_task_resources_async
+
+    links = await search_task_resources_async(
+        task_title=body.task_title,
+        task_type=body.task_type,
+    )
+
+    resp_data = TaskResourcesResponse(
+        task_title=body.task_title,
+        task_type=body.task_type,
+        resources=[ResourceLink(**link) for link in links],
+    )
+    return APIResponse[TaskResourcesResponse](
+        success=True,
+        message=f"Found {len(links)} resources",
         data=resp_data,
     )

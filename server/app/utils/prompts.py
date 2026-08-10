@@ -80,19 +80,19 @@ recall_prompt = ChatPromptTemplate.from_messages([
 # Curriculum Chain
 # ─────────────────────────────────────────────────────────────
 
-CURRICULUM_SYSTEM = """Create a {duration_days}-day placement study plan for {companies}. Return ONLY compact JSON with this exact structure:
+CURRICULUM_SYSTEM = """Create a {duration_days}-day placement study plan for {companies}, starting from Day {start_day} to Day {end_day}. Return ONLY compact JSON with this exact structure:
 {{
   "title": "Company Role Master Curriculum",
   "total_days": {duration_days},
   "days": [
     {{
-      "day": 1,
-      "title": "Day 1 — Topic Focus",
-      "date": "Day 1",
+      "day": {start_day},
+      "title": "Day {start_day} — Topic Focus",
+      "date": "Day {start_day}",
       "focus_topics": ["DSA", "Core CS"],
       "tasks": [
         {{
-          "task_id": "d1_1",
+          "task_id": "d{start_day}_1",
           "title": "Task title",
           "type": "coding",
           "difficulty": "Medium",
@@ -110,8 +110,8 @@ Rules:
 - difficulty must be one of: "Easy", "Medium", "Hard"
 - status must always be "pending"
 - priority must be one of: "high", "medium", "low"
-- task_id must follow pattern: d{{day}}_{{index}} e.g. d1_1, d1_2, d2_1
-- Generate ALL {duration_days} days. 3-4 tasks per day.
+- task_id must follow pattern: d{{day}}_{{index}} e.g. d{start_day}_1, d{start_day}_2
+- Generate EXACTLY {duration_days} days starting from {start_day} to {end_day}. 3-4 tasks per day.
 - Return valid JSON only. No markdown. No extra text."""
 
 CURRICULUM_HUMAN = """Companies: {companies} | Roles: {roles} | Days: {duration_days} | Hours/day: {study_hours_per_day}

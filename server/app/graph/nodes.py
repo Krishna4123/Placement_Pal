@@ -69,7 +69,7 @@ def _fallback_intent(user_message: str, companies: list[str], roles: list[str]) 
                 rounds.append(line)
 
     extracted_date = _extract_date_from_text(user_message)
-    rem_days = _calc_days_from_date(extracted_date) or 14
+    rem_days = _calc_days_from_date(extracted_date) or 5
 
     return {
         "target_companies": comp,
@@ -186,7 +186,7 @@ async def interpret_message_node(state: GraphState) -> dict[str, Any]:
         "target_companies": [comp] if comp else [],
         "target_roles": [role] if role else [],
         "interview_date": parsed.get("interview_date") or parsed.get("deadline_date"),
-        "preparation_duration_days": parsed.get("preparation_duration_days", 14),
+        "preparation_duration_days": parsed.get("preparation_duration_days", 5),
         "process_rounds": parsed.get("process_rounds", []),
         "skill_gaps": [],
         "current_skills": parsed.get("tech_stack", []),
@@ -362,17 +362,38 @@ async def curriculum_plan_node(state: GraphState) -> dict[str, Any]:
     intent = state.get("interpreted_intent") or {}
     companies = state.get("target_companies", [])
     roles = state.get("target_roles", [])
-    duration_days = state.get("preparation_duration_days", 14)
+    duration_days = state.get("preparation_duration_days", 5)
     company_intel = state.get("company_intel") or {}
     vault_context = state.get("vault_context") or []
 
-    logger.info("[Node] curriculum_plan | session=%s | days=%d", session_id, duration_days)
+    generate_next = state.get("generate_next", False)
+    existing_curriculum = state.get("curriculum") or {}
+    existing_days = existing_curriculum.get("days", [])
+
+    if generate_next and existing_days:
+        start_day = existing_days[-1].get("day", len(existing_days)) + 1
+    else:
+        start_day = 1
+        existing_days = []
+
+    remaining_days = duration_days - start_day + 1
+    if remaining_days <= 0:
+        logger.info("[Node] curriculum_plan: no more days to generate.")
+        return {"curriculum": existing_curriculum}
+
+    chunk_size = state.get("chunk_size", 5)
+    days_to_generate = min(remaining_days, chunk_size)
+    end_day = start_day + days_to_generate - 1
+
+    logger.info("[Node] curriculum_plan | session=%s | total_days=%d | generating %d days (%d to %d)", session_id, duration_days, days_to_generate, start_day, end_day)
 
     try:
         curriculum = await run_curriculum(
             companies=companies,
             roles=roles,
-            duration_days=duration_days,
+            duration_days=days_to_generate,
+            start_day=start_day,
+            end_day=end_day,
             skill_gaps=intent.get("skill_gaps", []),
             current_skills=intent.get("current_skills", []),
             company_intel=company_intel,
@@ -380,6 +401,12 @@ async def curriculum_plan_node(state: GraphState) -> dict[str, Any]:
             study_hours_per_day=intent.get("preferences", {}).get("study_hours_per_day", 4.0),
             process_rounds=intent.get("process_rounds", []),
         )
+        
+        if generate_next and existing_days:
+            new_days = curriculum.get("days", [])
+            curriculum["days"] = existing_days + new_days
+            curriculum["total_days"] = duration_days
+
         logger.info("[Node] curriculum_plan: curriculum generated successfully.")
         return {"curriculum": curriculum}
     except Exception as exc:

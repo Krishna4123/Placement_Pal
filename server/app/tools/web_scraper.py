@@ -112,6 +112,77 @@ def search_aptitude_resources(category: str) -> list[dict[str, Any]]:
         return []
 
 
+async def search_task_resources_async(
+    task_title: str,
+    task_type: str = "coding",
+    n_results: int = 6,
+) -> list[dict[str, Any]]:
+    """
+    Search for resource links for a given curriculum task.
+
+    For coding tasks: targets LeetCode, GeeksforGeeks, HackerRank, Codeforces.
+    For aptitude tasks: targets IndiaBix, PrepInsta, GeeksforGeeks aptitude.
+    For core CS tasks: targets GeeksforGeeks, TutorialsPoint, JavatPoint.
+
+    Returns only {title, url, source} dicts — no content scraping.
+    """
+    import asyncio
+
+    if task_type == "coding":
+        query = (
+            f"{task_title} coding problem practice "
+            f"site:leetcode.com OR site:geeksforgeeks.org OR site:hackerrank.com OR site:codeforces.com"
+        )
+    elif task_type == "aptitude":
+        query = (
+            f"{task_title} aptitude practice questions "
+            f"site:indiabix.com OR site:geeksforgeeks.org OR site:prepinsta.com OR site:m4maths.com"
+        )
+    else:  # core CS
+        query = (
+            f"{task_title} computer science concept explanation examples "
+            f"site:geeksforgeeks.org OR site:tutorialspoint.com OR site:javatpoint.com"
+        )
+
+    logger.info("[Tavily] Searching task resources: type=%s, title=%s", task_type, task_title)
+    tavily = _get_tavily_tool(max_results=n_results)
+    try:
+        raw = await asyncio.to_thread(tavily.invoke, {"query": query})
+        results = raw if isinstance(raw, list) else []
+        # Normalize: extract only title, url, source domain
+        links = []
+        for r in results:
+            url = r.get("url", "")
+            title = r.get("title", "") or task_title
+            # derive source label from domain
+            source = ""
+            if "leetcode" in url:
+                source = "LeetCode"
+            elif "geeksforgeeks" in url:
+                source = "GeeksforGeeks"
+            elif "hackerrank" in url:
+                source = "HackerRank"
+            elif "codeforces" in url:
+                source = "Codeforces"
+            elif "indiabix" in url:
+                source = "IndiaBix"
+            elif "prepinsta" in url:
+                source = "PrepInsta"
+            elif "tutorialspoint" in url:
+                source = "TutorialsPoint"
+            elif "javatpoint" in url:
+                source = "JavatPoint"
+            else:
+                from urllib.parse import urlparse
+                source = urlparse(url).netloc.replace("www.", "")
+            if url:
+                links.append({"title": title, "url": url, "source": source})
+        return links
+    except Exception as exc:
+        logger.warning("[Tavily] search_task_resources_async failed: %s", exc)
+        return []
+
+
 async def company_search_async(company_name: str, n_results: int = 8) -> list[dict[str, Any]]:
     """Async wrapper for company placement search used in LangGraph nodes."""
     import asyncio

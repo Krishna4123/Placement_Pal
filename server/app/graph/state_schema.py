@@ -44,5 +44,9 @@ class GraphState(TypedDict, total=False):
     # ── Parsed notification cache ─────────────────────────────
     parsed_notification: Optional[dict[str, Any]]
 
+    # ── Additional Context ────────────────────────────────────
+    generate_next: Optional[bool]
+    chunk_size: Optional[int]
+
     # ── Meta ──────────────────────────────────────────────────
     errors: list[str]
