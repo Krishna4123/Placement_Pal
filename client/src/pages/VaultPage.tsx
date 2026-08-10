@@ -6,16 +6,38 @@ import {
 import { GlassCard, Badge, Btn } from "../components/common/UIElements";
 import { vaultApi } from "../api/vault";
 
+interface FileItem {
+  id: string;
+  name: string;
+  size: string;
+  sizeBytes: number;
+  type: string;
+  date: string;
+  topics: number;
+  color: string;
+}
+
+interface TopicItem {
+  id: string;
+  name: string;
+  subject: string;
+  status: string;
+}
+
+interface SearchResult {
+  text: string;
+  sources: string[];
+}
+
 export const VaultPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [searching, setSearching] = useState(false);
   const [newTopicName, setNewTopicName] = useState("");
   const [newTopicSubject, setNewTopicSubject] = useState("OS");
 
-  const [files, setFiles] = useState<Array<{ id: string; name: string; size: string; type: string; date: string; topics: number; color: string }>>([]);
-
-  const [manualTopics, setManualTopics] = useState<Array<{ id: string; name: string; subject: string; status: string }>>([]);
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [manualTopics, setManualTopics] = useState<TopicItem[]>([]);
 
   const loadVaultData = async () => {
     try {
@@ -28,10 +50,11 @@ export const VaultPage: React.FC = () => {
           fRes.data.map((f: any) => ({
             id: f.file_id || f._id,
             name: f.filename,
-            size: f.size_bytes ? (f.size_bytes / (1024 * 1024)).toFixed(1) + " MB" : "1.0 MB",
+            sizeBytes: f.size_bytes || 0,
+            size: f.size_bytes ? (f.size_bytes / (1024 * 1024)).toFixed(2) + " MB" : "0.00 MB",
             type: f.suffix?.toUpperCase().replace(".", "") || "FILE",
             date: f.uploaded_at ? new Date(f.uploaded_at).toLocaleDateString() : "Recently",
-            topics: f.chunks_ingested || 1,
+            topics: f.chunks_ingested || 0,
             color: f.filename?.endsWith(".pdf") ? "text-red-500" : "text-blue-500",
           }))
         );
@@ -55,6 +78,10 @@ export const VaultPage: React.FC = () => {
     loadVaultData();
   }, []);
 
+  const totalStorageMB = (
+    files.reduce((acc, f) => acc + (f.sizeBytes || 0), 0) / (1024 * 1024)
+  ).toFixed(2);
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setSearching(true);
@@ -65,20 +92,32 @@ export const VaultPage: React.FC = () => {
       });
 
       if (res && res.data && res.data.results && res.data.results.length > 0) {
-        const topResult = res.data.results[0];
-        setAiAnswer(
-          `Based on your uploaded vault notes, here is the result for "${searchQuery}":\n\n${topResult.document || "Deadlock occurs when processes are waiting for resources held by each other. Conditions include Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait."}`
-        );
+        const resultsList = res.data.results;
+        const topResult = resultsList[0];
+        const extractedSources = Array.from(
+          new Set(
+            resultsList
+              .map((r: any) => r.metadata?.filename || r.metadata?.source)
+              .filter(Boolean)
+          )
+        ) as string[];
+
+        setSearchResult({
+          text: topResult.content || topResult.document || "No document content returned.",
+          sources: extractedSources.length > 0 ? extractedSources : ["Knowledge Vault Vectorstore"],
+        });
       } else {
-        setAiAnswer(
-          `Based on your uploaded notes, here's what I found about "${searchQuery}":\n\nDeadlock is a situation where two or more processes are permanently blocked, each waiting for a resource held by the other. The four necessary conditions (Coffman conditions) are: Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait.\n\nYour OS notes (Chapter 7 — Deadlocks) cover prevention via Banker's Algorithm and detection via Resource Allocation Graphs.`
-        );
+        setSearchResult({
+          text: `No matching documents or notes found in your vault for "${searchQuery}". Upload relevant documents or add topics to expand your vault!`,
+          sources: [],
+        });
       }
     } catch (err) {
       console.error("Vault query error:", err);
-      setAiAnswer(
-        `Based on your uploaded notes, here's what I found about "${searchQuery}":\n\nDeadlock is a situation where two or more processes are permanently blocked, each waiting for a resource held by the other. The four necessary conditions (Coffman conditions) are: Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait.\n\nYour OS notes (Chapter 7 — Deadlocks) cover prevention via Banker's Algorithm.`
-      );
+      setSearchResult({
+        text: `Unable to search vault at this time. Please make sure your server and vector database are running.`,
+        sources: [],
+      });
     } finally {
       setSearching(false);
     }
@@ -89,32 +128,19 @@ export const VaultPage: React.FC = () => {
     const file = e.target.files[0];
     try {
       await vaultApi.uploadFile(file);
-      setFiles((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          name: file.name,
-          size: (file.size / (1024 * 1024)).toFixed(1) + " MB",
-          type: file.name.split(".").pop()?.toUpperCase() || "FILE",
-          date: "Just now",
-          topics: 5,
-          color: file.name.endsWith(".pdf") ? "text-red-500" : "text-blue-500",
-        },
-      ]);
+      await loadVaultData();
     } catch (err) {
       console.error("Vault upload error:", err);
-      setFiles((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          name: file.name,
-          size: (file.size / (1024 * 1024)).toFixed(1) + " MB",
-          type: "FILE",
-          date: "Just now",
-          topics: 5,
-          color: "text-blue-500",
-        },
-      ]);
+    }
+  };
+
+  const handleDeleteFile = async (id: string) => {
+    try {
+      await vaultApi.deleteFile(id);
+    } catch (err) {
+      console.error("Failed to delete file from backend:", err);
+    } finally {
+      setFiles((prev) => prev.filter((f) => f.id !== id));
     }
   };
 
@@ -125,9 +151,9 @@ export const VaultPage: React.FC = () => {
         name: newTopicName.trim(),
         category: newTopicSubject,
       });
+      await loadVaultData();
     } catch (err) {
       console.error("Failed to create topic on backend:", err);
-    } finally {
       setManualTopics((prev) => [
         ...prev,
         {
@@ -137,6 +163,7 @@ export const VaultPage: React.FC = () => {
           status: "learning",
         },
       ]);
+    } finally {
       setNewTopicName("");
     }
   };
@@ -153,12 +180,12 @@ export const VaultPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto pb-8 space-y-5">
-      {/* Stats */}
+      {/* Dynamic Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: "Uploaded Files", value: files.length.toString(), icon: FileText, bg: "bg-blue-50", ic: "text-blue-600" },
-          { label: "Topics Indexed", value: "69", icon: Hash, bg: "bg-purple-50", ic: "text-purple-600" },
-          { label: "Storage Used", value: "15.6 MB", icon: Folder, bg: "bg-green-50", ic: "text-green-600" },
+          { label: "Topics & Notes", value: manualTopics.length.toString(), icon: Hash, bg: "bg-purple-50", ic: "text-purple-600" },
+          { label: "Storage Used", value: `${totalStorageMB} MB`, icon: Folder, bg: "bg-green-50", ic: "text-green-600" },
         ].map(({ label, value, icon: Icon, bg, ic }) => (
           <GlassCard key={label} className="p-4 flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
@@ -184,7 +211,7 @@ export const VaultPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="Ask anything — 'Explain deadlock from my notes' or 'List all DBMS topics I studied'"
+              placeholder="Ask anything from your uploaded study materials & topics..."
               className="bg-transparent text-sm text-[#374151] outline-none flex-1 placeholder:text-gray-400 min-w-0"
             />
           </div>
@@ -192,18 +219,23 @@ export const VaultPage: React.FC = () => {
             {searching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Btn>
         </div>
-        {aiAnswer && (
+        {searchResult && (
           <div className="bg-gradient-to-br from-blue-50 to-purple-50/60 border border-blue-100 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <Bot className="w-4 h-4 text-[#2563EB]" />
               <span className="text-xs font-semibold text-[#2563EB]">Vault AI Semantic Answer</span>
             </div>
-            <p className="text-sm text-[#374151] leading-relaxed whitespace-pre-line">{aiAnswer}</p>
-            <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-blue-100">
-              <span className="text-xs text-[#9CA3AF]">Sources:</span>
-              <Badge color="blue">OS_Tanenbaum_Notes.txt · Ch. 7</Badge>
-              <Badge color="purple">GATE_CS_2024.pdf · Section 4.2</Badge>
-            </div>
+            <p className="text-sm text-[#374151] leading-relaxed whitespace-pre-line">{searchResult.text}</p>
+            {searchResult.sources.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-blue-100">
+                <span className="text-xs text-[#9CA3AF]">Sources:</span>
+                {searchResult.sources.map((src, idx) => (
+                  <Badge key={idx} color={idx % 2 === 0 ? "blue" : "purple"}>
+                    {src}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </GlassCard>
@@ -218,26 +250,30 @@ export const VaultPage: React.FC = () => {
               <input type="file" onChange={handleFileUpload} className="hidden" accept=".pdf,.docx,.txt" />
             </label>
           </div>
-          <div className="space-y-2">
-            {files.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
-                <FileText className={`w-8 h-8 ${f.color} shrink-0`} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-[#374151] truncate">{f.name}</div>
-                  <div className="text-xs text-[#9CA3AF] mt-0.5">{f.size} · {f.topics} topics indexed · {f.date}</div>
+          {files.length === 0 ? (
+            <div className="text-center py-8 text-xs text-[#9CA3AF]">
+              No files uploaded yet. Upload PDFs or text notes to index into ChromaDB.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {files.map((f) => (
+                <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group">
+                  <FileText className={`w-8 h-8 ${f.color} shrink-0`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-[#374151] truncate">{f.name}</div>
+                    <div className="text-xs text-[#9CA3AF] mt-0.5">{f.size} · {f.topics} chunks indexed · {f.date}</div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteFile(f.id)}
+                    className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all cursor-pointer"
+                    title="Delete file"
+                  >
+                    <X className="w-3.5 h-3.5 text-gray-400 hover:text-red-400" />
+                  </button>
                 </div>
-                <button className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-gray-200 transition-all cursor-pointer">
-                  <Eye className="w-3.5 h-3.5 text-[#6B7280]" />
-                </button>
-                <button
-                  onClick={() => setFiles((prev) => prev.filter((item) => item.id !== f.id))}
-                  className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5 text-gray-400 hover:text-red-400" />
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </GlassCard>
 
         {/* Topics Table */}
@@ -254,24 +290,31 @@ export const VaultPage: React.FC = () => {
               <Btn size="sm" variant="secondary" onClick={handleAddTopic}><Plus className="w-3.5 h-3.5" /> Add</Btn>
             </div>
           </div>
-          <div className="space-y-2 max-h-72 overflow-y-auto">
-            {manualTopics.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-[#374151] font-medium">{t.name}</div>
-                  <div className="text-[11px] text-[#9CA3AF]">{t.subject}</div>
+          {manualTopics.length === 0 ? (
+            <div className="text-center py-8 text-xs text-[#9CA3AF]">
+              No manual topics added yet. Add topics you're studying to track them in MongoDB.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {manualTopics.map((t) => (
+                <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-[#374151] font-medium">{t.name}</div>
+                    <div className="text-[11px] text-[#9CA3AF]">{t.subject}</div>
+                  </div>
+                  <Badge color={t.status === "known" ? "green" : t.status === "weak" ? "red" : "amber"}>
+                    {t.status === "known" ? "Known" : t.status === "weak" ? "Weak" : "Learning"}
+                  </Badge>
+                  <button onClick={() => handleDeleteTopic(t.id)} className="text-gray-300 hover:text-red-400 p-1 cursor-pointer">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <Badge color={t.status === "known" ? "green" : t.status === "weak" ? "red" : "amber"}>
-                  {t.status === "known" ? "Known" : t.status === "weak" ? "Weak" : "Learning"}
-                </Badge>
-                <button onClick={() => handleDeleteTopic(t.id)} className="text-gray-300 hover:text-red-400 p-1 cursor-pointer">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </GlassCard>
       </div>
     </div>
   );
 };
+

@@ -46,4 +46,9 @@ export const vaultApi = {
     const res = await apiClient.delete(`/vault/topics/${topicId}`);
     return res.data;
   },
+  deleteFile: async (fileId: string) => {
+    const res = await apiClient.delete(`/vault/files/${fileId}`);
+    return res.data;
+  },
 };
+

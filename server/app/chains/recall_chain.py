@@ -58,26 +58,29 @@ def get_recall_chain() -> Runnable:
 async def run_recall(
     topic: str,
     context: str = "",
+    company_info: str = "",
     n_questions: int = DEFAULT_N_QUESTIONS,
 ) -> list[dict[str, Any]]:
     """
     Generate recall questions for a topic.
 
     Args:
-        topic:       Topic name (e.g., 'Dynamic Programming').
-        context:     Optional extra context from vault retrieval.
-        n_questions: Number of questions to generate.
+        topic:        Topic name (e.g., 'Dynamic Programming').
+        context:      Optional extra context from vault retrieval (docs & topics).
+        company_info: Overview, tech stack, and interview tips for the target company.
+        n_questions:  Number of questions to generate.
 
     Returns:
-        List of question dicts with keys: question, answer, difficulty,
-        topic, question_type.
+        List of question dicts with keys: question, answer, difficulty, topic, question_type.
     """
     chain = get_recall_chain()
     logger.info("Running recall chain for topic: %s", topic)
     result = await chain.ainvoke({
         "topic": topic,
-        "context": context or "No additional context provided.",
+        "company_info": company_info or "General software engineering interview.",
+        "context": context or "No additional vault context provided.",
         "n_questions": n_questions,
     })
     # Ensure we always return a list
     return result if isinstance(result, list) else [result]
+
