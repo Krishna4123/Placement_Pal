@@ -19,8 +19,9 @@ export const DashboardPage: React.FC = () => {
 
   // Real curriculum & day data
   const rawDays = placementState?.curriculum?.days || [];
-  const currentDayNum = placementState?.current_day || 1;
-  const currentDayObj = rawDays.find((d: any) => d.day === currentDayNum) || rawDays[0] || { tasks: [] };
+  const totalDaysCount = rawDays.length || placementState?.preparation_duration_days || profile.daysRemaining || 19;
+  const currentDayNum = Math.min(totalDaysCount, Math.max(1, totalDaysCount - profile.daysRemaining + 1));
+  const currentDayObj = rawDays.find((d: any) => d.day === currentDayNum) || rawDays[currentDayNum - 1] || rawDays[0] || { tasks: [] };
 
   // Tasks for today
   const initialTasks = (currentDayObj.tasks || []).map((t: any, idx: number) => ({
@@ -84,12 +85,15 @@ export const DashboardPage: React.FC = () => {
   const completedHours = (totalCompletedMins / 60).toFixed(1);
   const totalPlannedHours = (totalPlannedMins / 60).toFixed(1);
 
-  // Dynamic daily study chart data
+  // Dynamic daily study chart data (only calculate completed hours up to currentDayNum, future days remain 0)
   const studyChartData = rawDays.length > 0
     ? rawDays.slice(0, 7).map((d: any) => {
-        const dayDoneMins = (d.tasks || [])
-          .filter((t: any) => t.status === "done" || t.done)
-          .reduce((acc: number, t: any) => acc + (t.estimated_minutes || 30), 0);
+        const isFutureDay = d.day > currentDayNum;
+        const dayDoneMins = isFutureDay
+          ? 0
+          : (d.tasks || [])
+              .filter((t: any) => t.status === "done" || t.done)
+              .reduce((acc: number, t: any) => acc + (t.estimated_minutes || 30), 0);
         return {
           day: `Day ${d.day}`,
           h: parseFloat((dayDoneMins / 60).toFixed(1)) || 0,
