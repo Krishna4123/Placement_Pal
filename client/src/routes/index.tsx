@@ -9,6 +9,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { NewSessionPage } from '../pages/NewSessionPage';
 import { CompanyPage } from '../pages/CompanyPage';
 import { VaultPage } from '../pages/VaultPage';
+import { ResumePage } from '../pages/ResumePage';
 import { RecallPage } from '../pages/RecallPage';
 import { CurriculumPage } from '../pages/CurriculumPage';
 import { PlannerPage } from '../pages/PlannerPage';
@@ -31,6 +32,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/new-session" element={<NewSessionPage />} />
           <Route path="/company" element={<CompanyPage />} />
           <Route path="/vault" element={<VaultPage />} />
+          <Route path="/resume" element={<ResumePage />} />
           <Route path="/recall" element={<RecallPage />} />
           <Route path="/curriculum" element={<CurriculumPage />} />
           <Route path="/planner" element={<PlannerPage />} />

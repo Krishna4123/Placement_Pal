@@ -26,6 +26,18 @@ export const vaultApi = {
     });
     return res.data;
   },
+  uploadResume: async (file: File, targetCompany?: string, targetRole?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (targetCompany) formData.append('target_company', targetCompany);
+    if (targetRole) formData.append('target_role', targetRole);
+    const res = await apiClient.post('/vault/upload-resume', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
   queryVault: async (payload: VaultQueryPayload) => {
     const res = await apiClient.post('/vault/query', payload);
     return res.data;

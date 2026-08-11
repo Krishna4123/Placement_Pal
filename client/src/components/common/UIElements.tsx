@@ -15,8 +15,8 @@ const badgeStyles: Record<BadgeColor, string> = {
   gray: "bg-gray-50 text-gray-600 border-gray-200",
 };
 
-export const Badge = ({ children, color = "blue" }: { children: React.ReactNode; color?: BadgeColor }) => (
-  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${badgeStyles[color]}`}>
+export const Badge = ({ children, color = "blue", className = "" }: { children: React.ReactNode; color?: BadgeColor; className?: string }) => (
+  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${badgeStyles[color]} ${className}`}>
     {children}
   </span>
 );
@@ -40,7 +40,7 @@ const btnVariants: Record<BtnVariant, string> = {
 export const Btn = ({
   children, onClick, variant = "primary", size = "md", className = "", disabled = false, type = "button"
 }: {
-  children: React.ReactNode; onClick?: () => void;
+  children: React.ReactNode; onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   variant?: BtnVariant; size?: BtnSize; className?: string; disabled?: boolean; type?: "button" | "submit" | "reset";
 }) => (
   <button

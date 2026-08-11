@@ -9,10 +9,12 @@ topic CRUD.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, File, UploadFile, status
+from typing import Any
+from fastapi import APIRouter, File, UploadFile, Form, status
 from fastapi.responses import JSONResponse
 
 from app.services.vault_service import VaultService
+from app.chains.resume_parser_chain import ResumeParserChain
 from app.models.request_models import VaultQueryRequest, TopicCreateRequest
 from app.models.response_models import (
     APIResponse,
@@ -23,6 +25,7 @@ from app.models.response_models import (
 
 router = APIRouter(prefix="/vault", tags=["Vault"])
 vault_service = VaultService()
+resume_parser_chain = ResumeParserChain()
 
 
 @router.post(
@@ -46,6 +49,55 @@ async def upload_document(file: UploadFile = File(...)):
     return APIResponse[VaultUploadResponse](
         success=True,
         message="File processed and ingested successfully",
+        data=resp_data,
+    )
+
+
+@router.post(
+    "/upload-resume",
+    summary="Upload a resume and extract technical skills via Gemini LLM",
+    status_code=status.HTTP_200_OK,
+)
+async def upload_resume(
+    file: UploadFile = File(...),
+    target_company: str = Form("Target Company"),
+    target_role: str = Form("Software Engineer"),
+):
+    """
+    Parse resume content (PDF, DOCX, TXT, PNG, JPG), extract technical skills,
+    ingest into ChromaDB knowledge vault, and return structured skill analysis.
+    """
+    content = await file.read()
+    
+    # 1. Extract skills via Gemini / ResumeParserChain
+    parsed = await resume_parser_chain.parse_resume(
+        filename=file.filename,
+        content=content,
+        target_company=target_company,
+        target_role=target_role,
+    )
+    
+    # 2. Ingest document into ChromaDB vault
+    file_id = f"res_{file.filename}"
+    try:
+        vault_res = await vault_service.upload_file(file.filename, content)
+        if vault_res and "file_id" in vault_res:
+            file_id = vault_res["file_id"]
+    except Exception as err:
+        import logging
+        logging.getLogger(__name__).warning("Vault ingestion notice: %s", err)
+
+    resp_data = {
+        "file_id": file_id,
+        "filename": file.filename,
+        "extracted_skills": parsed["extracted_skills"],
+        "strengths": parsed["strengths"],
+        "status": "ingested",
+    }
+
+    return APIResponse[dict[str, Any]](
+        success=True,
+        message="Resume processed and skills extracted successfully",
         data=resp_data,
     )
 

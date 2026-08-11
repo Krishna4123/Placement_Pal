@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, BookOpen, Brain, GraduationCap,
   Settings, Search, Bell, MessageSquare, Plus,
-  Calendar, Sparkles, X, Menu, Terminal
+  Calendar, Sparkles, X, Menu, Terminal, FileText
 } from "lucide-react";
 import { ProgressBar } from "../components/common/UIElements";
 import { ChatPanel } from "../components/chat/ChatPanel";
@@ -14,6 +14,7 @@ const navItems = [
   { path: "/new-session", icon: Plus, label: "New Session", badge: "+" },
   { path: "/company", icon: Building2, label: "Company" },
   { path: "/vault", icon: BookOpen, label: "Knowledge Vault" },
+  { path: "/resume", icon: FileText, label: "Resume" },
   { path: "/recall", icon: Brain, label: "Recall Guide" },
   { path: "/curriculum", icon: GraduationCap, label: "Curriculum" },
   { path: "/planner", icon: Calendar, label: "Daily Planner" },
@@ -26,6 +27,7 @@ const routeTitles: Record<string, string> = {
   "/new-session": "New Session",
   "/company": "Company Intelligence",
   "/vault": "Knowledge Vault",
+  "/resume": "Resume & Portfolio Hub",
   "/recall": "Recall Guide",
   "/curriculum": "Curriculum",
   "/planner": "Daily Planner",
