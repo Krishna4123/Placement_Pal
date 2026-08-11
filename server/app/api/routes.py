@@ -13,7 +13,6 @@ from app.api.pipeline import router as pipeline_router
 from app.api.vault import router as vault_router
 from app.api.plan import router as plan_router
 from app.api.state import router as state_router
-from app.api.debug import router as debug_router
 from app.api.parse import router as parse_router
 
 api_router = APIRouter(prefix="/api/v1")
@@ -22,5 +21,4 @@ api_router.include_router(pipeline_router)
 api_router.include_router(vault_router)
 api_router.include_router(plan_router)
 api_router.include_router(state_router)
-api_router.include_router(debug_router)
 api_router.include_router(parse_router)
