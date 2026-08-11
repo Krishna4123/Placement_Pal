@@ -52,28 +52,30 @@ async def upload_document(file: UploadFile = File(...)):
 
 @router.post(
     "/query",
-    summary="Semantic search against the knowledge vault",
+    summary="Semantic search against the knowledge vault with LLM RAG augmentation",
     status_code=status.HTTP_200_OK,
     response_model=APIResponse[VaultQueryResponse],
 )
 async def query_vault(body: VaultQueryRequest):
     """
-    Perform a semantic similarity search and return ranked results.
+    Perform semantic search and return LLM-augmented answer with ranked source documents.
     """
-    results = await vault_service.query_vault(
+    res = await vault_service.query_vault(
         query=body.query,
         collection_name=body.collection_name,
         n_results=body.n_results,
     )
     resp_data = VaultQueryResponse(
-        results=results,
-        total=len(results),
+        results=res["results"],
+        answer=res.get("answer"),
+        total=res["total"],
     )
     return APIResponse[VaultQueryResponse](
         success=True,
-        message="Vault query executed successfully",
+        message="Vault RAG query executed successfully",
         data=resp_data,
     )
+
 
 
 @router.post(

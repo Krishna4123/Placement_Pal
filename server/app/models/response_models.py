@@ -56,6 +56,8 @@ class VaultUploadResponse(BaseModel):
 class VaultQueryResponse(BaseModel):
     results: list[dict[str, Any]]
     total: int
+    answer: Optional[str] = None
+
 
 
 class TopicResponse(BaseModel):

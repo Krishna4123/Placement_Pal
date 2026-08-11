@@ -117,15 +117,57 @@ class VaultService:
         query: str,
         collection_name: Optional[str] = None,
         n_results: int = 5,
-    ) -> list[dict[str, Any]]:
+    ) -> dict[str, Any]:
         """
-        Semantic search against the ChromaDB vault via LangChain retriever.
+        Semantic search against ChromaDB vault + LLM Retrieval-Augmented Generation (RAG).
         """
         import asyncio
+        from app.utils.llm import get_fast_llm
+        from langchain_core.prompts import ChatPromptTemplate
+        from langchain_core.output_parsers import StrOutputParser
+
+        # 1. Retrieve matching chunks from vectorstore
         results = await asyncio.to_thread(
             query_documents, query, collection_name, n_results
         )
-        return results
+
+        # 2. Format context for RAG
+        context_blocks = []
+        for idx, doc in enumerate(results, 1):
+            src = doc.get("metadata", {}).get("filename") or doc.get("metadata", {}).get("source") or f"Note #{idx}"
+            content = doc.get("content", "").strip()
+            if content:
+                context_blocks.append(f"--- Document Source: {src} ---\n{content}")
+
+        context_str = "\n\n".join(context_blocks) if context_blocks else "No matching document notes found in vault."
+
+        # 3. Augment answer with LLM strictly using retrieved chunks ONLY
+        answer: str | None = None
+        try:
+            rag_prompt = ChatPromptTemplate.from_messages([
+                ("system", (
+                    "You are a strict Knowledge Vault AI study assistant. "
+                    "You MUST answer the student's question ONLY using the provided retrieved Knowledge Vault chunks. "
+                    "Do NOT use external knowledge or invent facts not present in the retrieved chunks. "
+                    "If the retrieved chunks do not contain the answer to the question, state: 'The uploaded notes in your Knowledge Vault do not contain information about this.' "
+                    "If the answer is present in the chunks, provide a concise, simple explanation in 2 to 3 lines (max 3 sentences)."
+                )),
+                ("human", "Question: {query}\n\nRetrieved Knowledge Vault Chunks:\n{context}")
+            ])
+            llm = get_fast_llm()
+            chain = rag_prompt | llm | StrOutputParser()
+            answer = await chain.ainvoke({"query": query, "context": context_str})
+        except Exception as exc:
+            logger.warning("Vault RAG answer generation failed: %s", exc)
+            answer = None
+
+
+        return {
+            "results": results,
+            "answer": answer,
+            "total": len(results),
+        }
+
 
     async def create_topic(self, topic_data: dict[str, Any]) -> dict[str, Any]:
         """Add a new TopicEntry to the 'topics' MongoDB collection."""

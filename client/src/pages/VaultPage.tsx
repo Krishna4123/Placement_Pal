@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   FileText, Hash, Folder, Sparkles, Search, RefreshCw, Send, Bot,
   Upload, Eye, X, Plus
@@ -38,6 +38,10 @@ export const VaultPage: React.FC = () => {
 
   const [files, setFiles] = useState<FileItem[]>([]);
   const [manualTopics, setManualTopics] = useState<TopicItem[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadVaultData = async () => {
     try {
@@ -91,21 +95,30 @@ export const VaultPage: React.FC = () => {
         n_results: 5,
       });
 
-      if (res && res.data && res.data.results && res.data.results.length > 0) {
-        const resultsList = res.data.results;
+      if (res && res.data) {
+        const resultsList = res.data.results || [];
         const topResult = resultsList[0];
-        const extractedSources = Array.from(
-          new Set(
-            resultsList
-              .map((r: any) => r.metadata?.filename || r.metadata?.source)
-              .filter(Boolean)
-          )
-        ) as string[];
+        const augmentedAnswer = res.data.answer || topResult?.content || topResult?.document;
 
-        setSearchResult({
-          text: topResult.content || topResult.document || "No document content returned.",
-          sources: extractedSources.length > 0 ? extractedSources : ["Knowledge Vault Vectorstore"],
-        });
+        if (augmentedAnswer) {
+          const extractedSources = Array.from(
+            new Set(
+              resultsList
+                .map((r: any) => r.metadata?.filename || r.metadata?.source)
+                .filter(Boolean)
+            )
+          ) as string[];
+
+          setSearchResult({
+            text: augmentedAnswer,
+            sources: extractedSources.length > 0 ? extractedSources : ["Knowledge Vault Vectorstore"],
+          });
+        } else {
+          setSearchResult({
+            text: `No matching documents or notes found in your vault for "${searchQuery}". Upload relevant documents or add topics to expand your vault!`,
+            sources: [],
+          });
+        }
       } else {
         setSearchResult({
           text: `No matching documents or notes found in your vault for "${searchQuery}". Upload relevant documents or add topics to expand your vault!`,
@@ -119,6 +132,7 @@ export const VaultPage: React.FC = () => {
         sources: [],
       });
     } finally {
+
       setSearching(false);
     }
   };
@@ -126,11 +140,20 @@ export const VaultPage: React.FC = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
+    setUploading(true);
+    setUploadError(null);
     try {
       await vaultApi.uploadFile(file);
       await loadVaultData();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Vault upload error:", err);
+      const errMsg = err?.response?.data?.message || err?.message || "Failed to upload file. Please check file format (.pdf, .txt, .docx).";
+      setUploadError(errMsg);
+    } finally {
+      setUploading(false);
+      if (e.target) {
+        e.target.value = "";
+      }
     }
   };
 
@@ -245,11 +268,41 @@ export const VaultPage: React.FC = () => {
         <GlassCard className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-[#111827]">Uploaded Files</h3>
-            <label className="cursor-pointer">
-              <Btn size="sm" variant="gradient"><Upload className="w-3.5 h-3.5" /> Upload</Btn>
-              <input type="file" onChange={handleFileUpload} className="hidden" accept=".pdf,.docx,.txt" />
-            </label>
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileUpload}
+                className="hidden"
+                accept=".pdf,.docx,.txt"
+              />
+              <Btn
+                size="sm"
+                variant="gradient"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5" /> Upload
+                  </>
+                )}
+              </Btn>
+            </div>
           </div>
+          {uploadError && (
+            <div className="mb-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-center justify-between">
+              <span>{uploadError}</span>
+              <button onClick={() => setUploadError(null)} className="text-red-400 hover:text-red-600 p-0.5">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {files.length === 0 ? (
             <div className="text-center py-8 text-xs text-[#9CA3AF]">
               No files uploaded yet. Upload PDFs or text notes to index into ChromaDB.
