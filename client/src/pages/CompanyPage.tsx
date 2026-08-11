@@ -34,22 +34,20 @@ export const CompanyPage: React.FC = () => {
     placementState?.interpreted_intent?.interview_date ||
     null;
 
-  // Remaining days: recalculate from interview date if available
+  // Remaining days: synchronized in real time with profile.daysRemaining
   const prepDays = useMemo(() => {
     if (interviewDate) {
       const parsed = new Date(interviewDate);
       if (!isNaN(parsed.getTime())) {
-        const diff = Math.ceil((parsed.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const targetStart = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+        const diff = Math.ceil((targetStart.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
         return diff > 0 ? diff : 1;
       }
     }
-    return (
-      effectiveParsed?.preparation_duration_days ||
-      placementState?.interpreted_intent?.preparation_duration_days ||
-      profile.daysRemaining ||
-      14
-    );
-  }, [interviewDate, effectiveParsed, placementState, profile]);
+    return profile.daysRemaining || 18;
+  }, [interviewDate, profile.daysRemaining]);
 
   // Interview rounds: parsedNotification first (regex-extracted), then LLM
   const userRounds: string[] =
