@@ -217,3 +217,32 @@ class VaultService:
             logger.info("Deleted file: %s", file_id)
         return deleted
 
+    async def save_resume(self, resume_doc: dict[str, Any]) -> dict[str, Any]:
+        """Upsert parsed resume document in MongoDB 'resumes' collection by session_id."""
+        from app.database.collections import get_resumes_collection
+        col = get_resumes_collection()
+        session_id = resume_doc.get("session_id", "active_session")
+        resume_doc["updated_at"] = datetime.utcnow()
+        await col.update_one(
+            {"session_id": session_id},
+            {"$set": resume_doc},
+            upsert=True,
+        )
+        logger.info("Saved resume for session %s (file: %s, ATS score: %s%%)", session_id, resume_doc.get("filename"), resume_doc.get("ats_score"))
+        return resume_doc
+
+    async def get_resume(self, session_id: str) -> dict[str, Any] | None:
+        """Retrieve stored resume document from MongoDB 'resumes' collection by session_id."""
+        from app.database.collections import get_resumes_collection
+        col = get_resumes_collection()
+        doc = await col.find_one({"session_id": session_id}, {"_id": 0})
+        if not doc:
+            # Fallback to active_session if requested session not found
+            doc = await col.find_one({"session_id": "active_session"}, {"_id": 0})
+        if doc and "uploaded_at" in doc and isinstance(doc["uploaded_at"], datetime):
+            doc["uploaded_at"] = doc["uploaded_at"].isoformat()
+        if doc and "updated_at" in doc and isinstance(doc["updated_at"], datetime):
+            doc["updated_at"] = doc["updated_at"].isoformat()
+        return doc
+
+

@@ -130,3 +130,49 @@ async def run_phase2(body: Phase2Request):
         message="Phase-2 pipeline completed",
         data=resp_data,
     )
+
+
+from pydantic import BaseModel, Field
+
+class RecallTopicRequest(BaseModel):
+    topic: str = Field(..., description="Skill or topic to generate recall practice items for")
+    target_company: str = Field(default="Target Company", description="Target company context")
+    session_id: str = Field(default="active_session", description="Active session ID")
+
+@router.post(
+    "/recall-topic",
+    summary="Generate dynamic active-recall questions for a specific resume skill or topic",
+    status_code=status.HTTP_200_OK,
+)
+async def generate_recall_for_topic(body: RecallTopicRequest):
+    """
+    Generate 4 active recall practice questions tailored to a specific skill from the student's resume.
+    """
+    from app.chains.recall_chain import run_recall
+    try:
+        questions = await run_recall(
+            topic=body.topic,
+            context=f"Student declared proficiency in {body.topic} on their resume.",
+            company_info=f"Preparing for {body.target_company} technical evaluation.",
+            n_questions=4,
+        )
+        return APIResponse[dict](
+            success=True,
+            message=f"Recall questions generated for {body.topic}",
+            data={"topic": body.topic, "questions": questions},
+        )
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("On-demand recall generation failed for %s: %s", body.topic, exc)
+        # Fallback question set
+        fallback_qs = [
+            {"question": f"What are the core principles and key mechanisms of {body.topic}?", "answer": f"Core concepts in {body.topic} include fundamentals, design patterns, and standard optimizations.", "difficulty": "Medium", "question_type": "conceptual"},
+            {"question": f"How do you optimize time and space complexity when working with {body.topic}?", "answer": "Use appropriate algorithms, caching, and data structures to avoid redundant computations.", "difficulty": "Medium", "question_type": "problem-solving"},
+            {"question": f"What common trade-offs or edge cases occur when implementing {body.topic}?", "answer": "Consider memory overhead, concurrency issues, and input validation bounds.", "difficulty": "Hard", "question_type": "deep-dive"},
+        ]
+        return APIResponse[dict](
+            success=True,
+            message=f"Fallback recall questions generated for {body.topic}",
+            data={"topic": body.topic, "questions": fallback_qs},
+        )
+

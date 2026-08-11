@@ -55,17 +55,19 @@ async def upload_document(file: UploadFile = File(...)):
 
 @router.post(
     "/upload-resume",
-    summary="Upload a resume and extract technical skills via Gemini LLM",
+    summary="Upload a resume, extract technical skills via Gemini LLM, calculate ATS score & store in MongoDB",
     status_code=status.HTTP_200_OK,
 )
 async def upload_resume(
     file: UploadFile = File(...),
+    session_id: str = Form("active_session"),
     target_company: str = Form("Target Company"),
     target_role: str = Form("Software Engineer"),
 ):
     """
-    Parse resume content (PDF, DOCX, TXT, PNG, JPG), extract technical skills,
-    ingest into ChromaDB knowledge vault, and return structured skill analysis.
+    Parse resume content (PDF, DOCX, TXT), extract technical skills,
+    calculate ATS score, ingest into ChromaDB knowledge vault, and store
+    document in MongoDB 'resumes' collection.
     """
     content = await file.read()
     
@@ -87,19 +89,84 @@ async def upload_resume(
         import logging
         logging.getLogger(__name__).warning("Vault ingestion notice: %s", err)
 
-    resp_data = {
+    extracted_skills = parsed.get("extracted_skills", [])
+    strengths = parsed.get("strengths", [])
+
+    # 3. Calculate ATS score & tech stack alignment against target company
+    expected_tech_stack = [
+        "Data Structures & Algorithms",
+        "System Design",
+        "Python",
+        "C++",
+        "SQL",
+        "REST APIs",
+        "React",
+        "Object-Oriented Programming"
+    ]
+    matched_skills = [
+        s for s in expected_tech_stack
+        if any(es.lower() in s.lower() or s.lower() in es.lower() for es in extracted_skills)
+    ]
+    missing_skills = [s for s in expected_tech_stack if s not in matched_skills]
+    
+    match_ratio = len(matched_skills) / len(expected_tech_stack) if expected_tech_stack else 0.5
+    ats_score = min(98, max(25, int(match_ratio * 100)))
+
+    suggestions = (
+        f"To boost your ATS score for {target_company}, consider adding projects or experience highlighting: "
+        + ", ".join(missing_skills[:3]) + "."
+        if missing_skills else
+        f"Excellent fit! Your resume strongly aligns with tech stack requirements for {target_company}."
+    )
+
+    resume_doc = {
+        "session_id": session_id,
         "file_id": file_id,
         "filename": file.filename,
-        "extracted_skills": parsed["extracted_skills"],
-        "strengths": parsed["strengths"],
+        "file_size": f"{(len(content) / (1024 * 1024)):.2f} MB",
+        "extracted_skills": extracted_skills,
+        "strengths": strengths,
+        "ats_score": ats_score,
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+        "suggestions": suggestions,
+        "target_company": target_company,
+        "target_role": target_role,
+        "raw_text_snippet": parsed.get("raw_text_snippet", ""),
         "status": "ingested",
     }
 
+    # 4. Save to MongoDB 'resumes' collection
+    saved_doc = await vault_service.save_resume(resume_doc)
+
     return APIResponse[dict[str, Any]](
         success=True,
-        message="Resume processed and skills extracted successfully",
-        data=resp_data,
+        message="Resume processed, ATS score calculated and stored successfully",
+        data=saved_doc,
     )
+
+
+@router.get(
+    "/resume/{session_id}",
+    summary="Get stored resume analysis for a session",
+    status_code=status.HTTP_200_OK,
+)
+async def get_resume(session_id: str):
+    """
+    Retrieve stored resume document & ATS analysis from MongoDB by session_id.
+    """
+    doc = await vault_service.get_resume(session_id)
+    if not doc:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"success": False, "message": f"No resume found for session '{session_id}'", "data": None},
+        )
+    return APIResponse[dict[str, Any]](
+        success=True,
+        message="Resume retrieved successfully",
+        data=doc,
+    )
+
 
 
 @router.post(

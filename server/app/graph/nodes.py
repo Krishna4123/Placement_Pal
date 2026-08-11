@@ -352,21 +352,30 @@ async def generate_recall_node(state: GraphState) -> dict[str, Any]:
 
     company_info_str = "\n".join(c_parts) if c_parts else "Target company software engineering role."
 
-    # Incorporate skill gaps and vault manual topics into topic set
-    topics.update(intent.get("skill_gaps", []))
-    for v in vault_context:
-        if isinstance(v, dict) and "metadata" in v and "name" in v["metadata"]:
-            topics.add(v["metadata"]["name"])
+    # Fetch candidate resume skills from MongoDB to prioritize for active recall
+    resume_skills: list[str] = []
+    try:
+        from app.services.vault_service import VaultService
+        vs = VaultService()
+        resume_doc = await vs.get_resume(session_id)
+        if resume_doc and "extracted_skills" in resume_doc:
+            resume_skills = resume_doc["extracted_skills"]
+            logger.info("[Node] generate_recall: retrieved %d skills from candidate resume", len(resume_skills))
+    except Exception as r_err:
+        logger.warning("[Node] generate_recall: could not fetch resume skills: %s", r_err)
 
-    if not topics:
-        topics = {"Arrays", "Dynamic Programming", "System Design", "OOPS"}
+    # Incorporate resume skills (highest priority), skill gaps, and vault topics into topic set
+    priority_topics = list(dict.fromkeys(resume_skills + list(topics)))
+    if not priority_topics:
+        priority_topics = ["Data Structures & Algorithms", "System Design", "Python", "SQL", "Object-Oriented Programming"]
 
     context_text = "\n".join(
         r.get("content", "") if isinstance(r, dict) else str(r)
         for r in vault_context[:6]
     )
 
-    topic_list = list(topics)[:6]
+    topic_list = priority_topics[:6]
+
     async def _recall_one(topic: str) -> tuple[str, list]:
         try:
             qs = await run_recall(topic, context=context_text, company_info=company_info_str, n_questions=3)

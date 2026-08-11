@@ -1,133 +1,314 @@
-import React, { useState } from "react";
-import { Bot, Download, Cpu, Database, Layers, Network } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Bot, Sparkles, Brain, CheckCircle2, ChevronDown, ChevronUp, RefreshCw, FileText, HelpCircle } from "lucide-react";
 import { GlassCard, Badge, Btn } from "../components/common/UIElements";
 import { useSession } from "../context/SessionContext";
+import { pipelineApi } from "../api/pipeline";
 
-type SubjectColor = "blue" | "green" | "purple" | "amber";
+interface RecallQuestion {
+  question: string;
+  answer?: string;
+  difficulty?: string;
+  question_type?: string;
+}
 
 export const RecallPage: React.FC = () => {
-  const { profile, placementState } = useSession();
+  const { profile, placementState, resumeData, sessionId } = useSession();
 
-  const recallFromState = placementState?.recall_questions || [];
+  const targetCompany = profile.targetCompany || "Target Company";
 
-  const subjects: Array<{
-    id: string; label: string; icon: React.ElementType; color: SubjectColor;
-    topics: string[]; weak: number; known: number;
-  }> = [
-    { id: "os", label: "Operating Systems", icon: Cpu, color: "blue", weak: 2, known: 3,
-      topics: ["Process Scheduling", "Memory Management", "Deadlocks", "File Systems", "I/O Management"] },
-    { id: "dbms", label: "Database Management", icon: Database, color: "green", weak: 1, known: 4,
-      topics: ["Normalization", "SQL Joins & Views", "Transactions & ACID", "Indexing", "ER Diagrams"] },
-    { id: "oop", label: "Object Oriented Programming", icon: Layers, color: "purple", weak: 0, known: 5,
-      topics: ["Inheritance", "Polymorphism", "Abstraction", "Encapsulation", "Design Patterns"] },
-    { id: "cn", label: "Computer Networks", icon: Network, color: "amber", weak: 3, known: 2,
-      topics: ["OSI Model", "TCP/IP Suite", "HTTP & HTTPS", "DNS & DHCP", "Routing Algorithms"] },
-  ];
+  // Derive topics directly from candidate's resume!
+  const resumeSkills: string[] = React.useMemo(() => {
+    const extracted = resumeData?.extracted_skills || resumeData?.extractedSkills;
+    if (extracted && Array.isArray(extracted) && extracted.length > 0) {
+      return extracted;
+    }
+    return [
+      "Data Structures & Algorithms",
+      "System Design",
+      "Python",
+      "C++",
+      "SQL & Database Systems",
+      "REST APIs & Microservices",
+      "Operating Systems",
+      "Computer Networks"
+    ];
+  }, [resumeData]);
 
-  const subjectBg: Record<SubjectColor, string> = {
-    blue: "bg-blue-50 border-blue-200",
-    green: "bg-green-50 border-green-200",
-    purple: "bg-purple-50 border-purple-200",
-    amber: "bg-amber-50 border-amber-200",
+  const [selectedTopic, setSelectedTopic] = useState<string>(resumeSkills[0] || "Data Structures & Algorithms");
+  const [topicQuestions, setTopicQuestions] = useState<RecallQuestion[]>([]);
+  const [loadingRecall, setLoadingRecall] = useState<boolean>(false);
+  const [expandedAnswers, setExpandedAnswers] = useState<Record<number, boolean>>({});
+  const [userAssessments, setUserAssessments] = useState<Record<number, "mastered" | "review" | "weak">>({});
+
+  // Sync selected topic when resumeSkills load
+  useEffect(() => {
+    if (resumeSkills.length > 0 && !resumeSkills.includes(selectedTopic)) {
+      setSelectedTopic(resumeSkills[0]);
+    }
+  }, [resumeSkills]);
+
+  // Fetch or generate recall questions when selectedTopic changes
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRecallForTopic = async () => {
+      setLoadingRecall(true);
+      setExpandedAnswers({});
+      
+      // Check if state already has recall questions for this topic
+      const existingInState = (placementState?.recall_questions || []).find(
+        (rq: any) => rq.topic?.toLowerCase() === selectedTopic.toLowerCase()
+      );
+
+      if (existingInState && existingInState.questions?.length) {
+        const formatted = existingInState.questions.map((q: any) =>
+          typeof q === "string" ? { question: q, difficulty: "Medium" } : q
+        );
+        if (isMounted) {
+          setTopicQuestions(formatted);
+          setLoadingRecall(false);
+        }
+        return;
+      }
+
+      // Generate on-demand via LLM endpoint
+      try {
+        const res = await pipelineApi.generateTopicRecall(selectedTopic, targetCompany, sessionId);
+        if (isMounted && res && res.data && res.data.questions) {
+          setTopicQuestions(res.data.questions);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch on-demand recall, using fallback:", err);
+        if (isMounted) {
+          setTopicQuestions([
+            {
+              question: `What are the core fundamentals of ${selectedTopic}?`,
+              answer: `Fundamentals of ${selectedTopic} focus on efficient algorithm execution, memory layout, and key data structures.`,
+              difficulty: "Medium",
+              question_type: "conceptual"
+            },
+            {
+              question: `How do you handle edge cases and memory constraints in ${selectedTopic}?`,
+              answer: `Validate bounds, manage reference lifetimes, and use optimal space complexity structures.`,
+              difficulty: "Hard",
+              question_type: "problem-solving"
+            },
+            {
+              question: `What real-world engineering trade-offs apply when using ${selectedTopic} at ${targetCompany}?`,
+              answer: `Trade-offs include balancing throughput vs latency, caching strategies, and concurrency safety.`,
+              difficulty: "Hard",
+              question_type: "deep-dive"
+            }
+          ]);
+        }
+      } finally {
+        if (isMounted) setLoadingRecall(false);
+      }
+    };
+
+    fetchRecallForTopic();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedTopic, targetCompany, sessionId]);
+
+  const toggleAnswer = (idx: number) => {
+    setExpandedAnswers((prev) => ({ ...prev, [idx]: !prev[idx] }));
   };
-  const subjectIconBg: Record<SubjectColor, string> = {
-    blue: "bg-blue-100 text-blue-600",
-    green: "bg-green-100 text-green-600",
-    purple: "bg-purple-100 text-purple-600",
-    amber: "bg-amber-100 text-amber-600",
-  };
 
-  const [activeId, setActiveId] = useState("os");
-  const active = subjects.find((s) => s.id === activeId)!;
+  const markAssessment = (idx: number, status: "mastered" | "review" | "weak") => {
+    setUserAssessments((prev) => ({ ...prev, [idx]: status }));
+  };
 
   return (
-    <div className="max-w-6xl mx-auto pb-8 space-y-5">
-      {/* AI Summary */}
-      <GlassCard className="p-6 bg-gradient-to-br from-blue-50/60 via-white to-purple-50/40 border-blue-100">
+    <div className="max-w-5xl mx-auto pb-10 space-y-6">
+      {/* AI Summary Banner */}
+      <GlassCard className="p-6 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-purple-50/70 border-blue-100">
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Bot className="w-4 h-4 text-[#2563EB]" />
-              <span className="text-xs font-semibold text-[#2563EB]">AI Revision Summary — Generated Today</span>
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center gap-2">
+              <Brain className="w-5 h-5 text-[#2563EB]" />
+              <span className="text-xs font-semibold text-[#2563EB] uppercase tracking-wider">
+                Resume-Driven Active Recall Guide
+              </span>
             </div>
-            <h2 className="text-base font-bold text-[#111827] mb-2">Your {profile.targetCompany} Interview in {profile.daysRemaining} Days — Priority Revision Plan</h2>
-            <p className="text-sm text-[#6B7280] leading-relaxed">
-              Based on your Knowledge Vault and weak topic analysis, <strong className="text-[#374151]">OS Process Management</strong> and <strong className="text-[#374151]">Computer Networks</strong> need the most attention. Recommended allocation: 40% DSA (Graphs + DP), 30% OS, 20% CN, 10% DBMS review.
+            <h2 className="text-lg font-bold text-[#111827]">
+              {targetCompany} Preparation — Active Memory Testing
+            </h2>
+            <p className="text-xs text-[#6B7280] leading-relaxed max-w-2xl">
+              These active recall topics are derived directly from the skills listed on your candidate <strong className="text-gray-800">Resume</strong>. Click any topic below to trigger instant AI flashcards and test your recall depth.
             </p>
           </div>
-          <Btn variant="secondary" size="sm" className="shrink-0">
-            <Download className="w-3.5 h-3.5" /> Download PDF
-          </Btn>
+          <Badge color="purple" className="shrink-0 flex items-center gap-1">
+            <FileText className="w-3.5 h-3.5" />
+            <span>Resume Skill Verified</span>
+          </Badge>
         </div>
       </GlassCard>
 
-      {/* Subject Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {subjects.map((s) => {
-          const Icon = s.icon;
-          const isActive = activeId === s.id;
-          return (
-            <button
-              key={s.id}
-              onClick={() => setActiveId(s.id)}
-              className={`p-4 rounded-2xl border text-left transition-all hover:shadow-sm cursor-pointer ${isActive ? subjectBg[s.color] : "bg-white border-gray-100 hover:bg-gray-50"}`}
-            >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${subjectIconBg[s.color]}`}>
-                <Icon className="w-4 h-4" />
-              </div>
-              <div className="font-semibold text-sm text-[#111827] mb-1">{s.label}</div>
-              <div className="flex gap-2">
-                <span className="text-xs text-green-600 font-medium">{s.known} strong</span>
-                <span className="text-xs text-red-500 font-medium">{s.weak} weak</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Key Concepts / AI Questions */}
-      <GlassCard className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-[#111827]">
-            {recallFromState.length > 0 ? "AI Generated Recall Questions" : `${active.label} — Key Concepts to Revise`}
-          </h3>
-          <Badge color="blue">AI Generated</Badge>
+      {/* Resume Skills Topic Selector */}
+      <GlassCard className="p-5 space-y-3">
+        <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block">
+          Select Resume Skill / Topic to Test Recall ({resumeSkills.length})
+        </label>
+        <div className="flex flex-wrap gap-2.5">
+          {resumeSkills.map((skill) => {
+            const isSelected = selectedTopic.toLowerCase() === skill.toLowerCase();
+            return (
+              <button
+                key={skill}
+                onClick={() => setSelectedTopic(skill)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  isSelected
+                    ? "bg-blue-600 text-white border-blue-600 shadow-sm scale-[1.02]"
+                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                }`}
+              >
+                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />}
+                <span>{skill}</span>
+              </button>
+            );
+          })}
         </div>
-        {recallFromState.length > 0 ? (
-          <div className="space-y-4">
-            {recallFromState.map((rq: any, idx: number) => (
-              <div key={idx} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
-                <div className="text-sm font-semibold text-[#111827]">{rq.topic || `Topic ${idx + 1}`}</div>
-                <ul className="list-disc pl-5 text-xs text-[#374151] space-y-1">
-                  {(rq.questions || []).map((q: any, qidx: number) => (
-                    <li key={qidx}>{typeof q === 'string' ? q : q.question || JSON.stringify(q)}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+      </GlassCard>
+
+      {/* Active Question Cards for Selected Topic */}
+      <GlassCard className="p-6 space-y-5">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div>
+            <h3 className="font-bold text-[#111827] text-base flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              Active Recall: <span className="text-blue-600">{selectedTopic}</span>
+            </h3>
+            <p className="text-xs text-[#6B7280] mt-0.5">
+              Practice questions tailored for <span className="font-semibold text-gray-800">{targetCompany}</span> technical interview evaluations
+            </p>
+          </div>
+
+          <Btn
+            variant="secondary"
+            size="sm"
+            disabled={loadingRecall}
+            onClick={() => {
+              setLoadingRecall(true);
+              pipelineApi.generateTopicRecall(selectedTopic, targetCompany, sessionId).then((res) => {
+                if (res?.data?.questions) setTopicQuestions(res.data.questions);
+              }).finally(() => setLoadingRecall(false));
+            }}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1 ${loadingRecall ? "animate-spin text-blue-600" : ""}`} />
+            <span>Regenerate Questions</span>
+          </Btn>
+        </div>
+
+        {/* Loading State */}
+        {loadingRecall ? (
+          <div className="py-12 flex flex-col items-center justify-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 animate-pulse">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div className="text-xs font-semibold text-gray-700">Generating Active Recall Items for {selectedTopic}...</div>
+            <div className="text-[11px] text-gray-400">LLM multi-agents tailoring questions to {targetCompany} standards</div>
+          </div>
+        ) : topicQuestions.length === 0 ? (
+          <div className="text-center py-8 text-xs text-gray-500">
+            No questions available for this topic. Click "Regenerate Questions" above.
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {active.topics.map((topic, i) => (
-              <div key={topic} className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
-                <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <div className="text-sm font-medium text-[#374151]">{topic}</div>
-                  <Badge color={i < active.weak ? "red" : i < active.weak + 2 ? "amber" : "green"}>
-                    {i < active.weak ? "Weak" : i < active.weak + 2 ? "Review" : "Strong"}
-                  </Badge>
+          <div className="space-y-4">
+            {topicQuestions.map((qObj, idx) => {
+              const isExpanded = expandedAnswers[idx] || false;
+              const assessment = userAssessments[idx];
+
+              return (
+                <div key={idx} className="p-4 bg-gray-50/70 border border-gray-200/80 rounded-2xl space-y-3 hover:border-blue-200 transition-all">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        Q{idx + 1}
+                      </div>
+                      <div className="text-sm font-semibold text-[#111827] leading-snug">
+                        {qObj.question}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {qObj.question_type && (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                          {qObj.question_type}
+                        </span>
+                      )}
+                      <Badge color={qObj.difficulty?.toLowerCase() === "hard" ? "red" : qObj.difficulty?.toLowerCase() === "easy" ? "green" : "amber"}>
+                        {qObj.difficulty || "Medium"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Toggle Answer Button */}
+                  {qObj.answer && (
+                    <div>
+                      <button
+                        onClick={() => toggleAnswer(idx)}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                        <span>{isExpanded ? "Hide Solution & Answer" : "Show Solution & Answer"}</span>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mt-2.5 p-3.5 bg-white border border-blue-100 rounded-xl text-xs text-gray-700 leading-relaxed space-y-1 shadow-sm">
+                          <span className="font-semibold text-blue-900 block text-[11px] uppercase tracking-wide">
+                            Model Answer & Key Concept:
+                          </span>
+                          <p>{qObj.answer}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Self Assessment Controls */}
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200/60 text-xs">
+                    <span className="text-[11px] text-gray-400">Self Assessment:</span>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => markAssessment(idx, "mastered")}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border cursor-pointer transition-all ${
+                          assessment === "mastered"
+                            ? "bg-green-100 text-green-800 border-green-300 font-bold"
+                            : "bg-white text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700"
+                        }`}
+                      >
+                        Mastered
+                      </button>
+                      <button
+                        onClick={() => markAssessment(idx, "review")}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border cursor-pointer transition-all ${
+                          assessment === "review"
+                            ? "bg-amber-100 text-amber-800 border-amber-300 font-bold"
+                            : "bg-white text-gray-500 border-gray-200 hover:bg-amber-50 hover:text-amber-700"
+                        }`}
+                      >
+                        Needs Review
+                      </button>
+                      <button
+                        onClick={() => markAssessment(idx, "weak")}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border cursor-pointer transition-all ${
+                          assessment === "weak"
+                            ? "bg-red-100 text-red-800 border-red-300 font-bold"
+                            : "bg-white text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-700"
+                        }`}
+                      >
+                        Weak Concept
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                  {i < active.weak
-                    ? "Priority: spend extra time here. Review theory and solve past year questions."
-                    : i < active.weak + 2
-                    ? "Near-mastery: do a quick 20-min revision and practice 3–5 problems."
-                    : "Well covered: a brief recap before the interview will suffice."}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </GlassCard>
     </div>
   );
 };
+

@@ -21,8 +21,10 @@ interface SessionContextType {
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
   placementState: PlacementState | null;
   parsedNotification: ParsedNotification | null;
+  resumeData: any | null;
   loadingState: boolean;
   refreshState: (overrideSessionId?: string) => Promise<void>;
+  refreshResume: (overrideSessionId?: string) => Promise<void>;
   applyParsedNotification: (data: ParsedNotification, company?: string) => void;
   startNewSession: (newCompany?: string) => string;
   clearSession: () => void;
@@ -59,13 +61,30 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const saved = localStorage.getItem('placementpal_parsed_notification');
     return saved ? JSON.parse(saved) : null;
   });
+  const [resumeData, setResumeData] = useState<any | null>(() => {
+    const saved = localStorage.getItem('placementpal_user_resume');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [loadingState, setLoadingState] = useState<boolean>(false);
+
+  const refreshResume = async (overrideSessionId?: string) => {
+    try {
+      const { vaultApi } = await import('../api/vault');
+      const activeId = overrideSessionId || sessionId || 'active_session';
+      const res = await vaultApi.getResume(activeId);
+      if (res && res.data) {
+        setResumeData(res.data);
+        localStorage.setItem('placementpal_user_resume', JSON.stringify(res.data));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch resume for session:', err);
+    }
+  };
 
   const applyParsedNotification = (data: ParsedNotification, company?: string) => {
     setParsedNotification(data);
     localStorage.setItem('placementpal_parsed_notification', JSON.stringify(data));
     
-    // Calculate remaining days from interview date immediately
     let days = data.preparation_duration_days;
     if (data.interview_date) {
       const parsed = new Date(data.interview_date);
@@ -98,9 +117,11 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const clearSession = () => {
     localStorage.removeItem('placementpal_active_session');
     localStorage.removeItem('placementpal_parsed_notification');
+    localStorage.removeItem('placementpal_user_resume');
     setHasActiveSession(false);
     setPlacementState(null);
     setParsedNotification(null);
+    setResumeData(null);
   };
 
   const refreshState = async (overrideSessionId?: string) => {
@@ -113,7 +134,6 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const stateData = res.data;
         setPlacementState(stateData);
 
-        // Restore parsedNotification from backend if not in localStorage
         if (!parsedNotification && stateData.parsed_notification) {
           const pn = stateData.parsed_notification as any;
           setParsedNotification(pn);
@@ -140,6 +160,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
           daysRemaining: days || prev.daysRemaining,
         }));
       }
+
+      await refreshResume(activeId);
     } catch (err) {
       console.warn('Failed to load session state from server, using local fallback', err);
     } finally {
@@ -166,8 +188,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setProfile,
         placementState,
         parsedNotification,
+        resumeData,
         loadingState,
         refreshState,
+        refreshResume,
         applyParsedNotification,
         startNewSession,
         clearSession,
@@ -177,6 +201,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     </SessionContext.Provider>
   );
 };
+
 
 export const useSession = () => {
   const context = useContext(SessionContext);

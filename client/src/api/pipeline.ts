@@ -22,4 +22,13 @@ export const pipelineApi = {
     const res = await apiClient.post('/pipeline/phase2', payload);
     return res.data;
   },
+  generateTopicRecall: async (topic: string, targetCompany?: string, sessionId?: string) => {
+    const res = await apiClient.post('/pipeline/recall-topic', {
+      topic,
+      target_company: targetCompany || 'Target Company',
+      session_id: sessionId || 'active_session',
+    });
+    return res.data;
+  },
 };
+

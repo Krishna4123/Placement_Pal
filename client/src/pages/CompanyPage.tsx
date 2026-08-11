@@ -187,7 +187,7 @@ export const CompanyPage: React.FC = () => {
         {/* Company Overview (Tavily Search) */}
         <GlassCard className="p-5">
           <h3 className="font-semibold text-[#111827] mb-3 flex items-center gap-2">
-            <Globe className="w-4 h-4 text-[#2563EB]" /> Company Overview (Web Search)
+            <Globe className="w-4 h-4 text-[#2563EB]" /> Company Overview
           </h3>
           <div className="text-sm text-[#374151] leading-relaxed mb-4">
             {overview ? (

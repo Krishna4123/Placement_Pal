@@ -21,6 +21,7 @@ TOPICS_COLLECTION       = "topics"
 VAULT_FILES_COLLECTION  = "vault_files"
 PROGRESS_COLLECTION     = "progress"
 COMPANY_CACHE_COLLECTION = "company_cache"
+RESUMES_COLLECTION       = "resumes"
 
 
 def get_sessions_collection() -> AsyncIOMotorCollection:
@@ -41,3 +42,8 @@ def get_progress_collection() -> AsyncIOMotorCollection:
 
 def get_company_cache_collection() -> AsyncIOMotorCollection:
     return get_database()[COMPANY_CACHE_COLLECTION]
+
+
+def get_resumes_collection() -> AsyncIOMotorCollection:
+    return get_database()[RESUMES_COLLECTION]
+
