@@ -57,19 +57,6 @@ export const DashboardPage: React.FC = () => {
   const todayCompletedCount = initialTasks.filter((t: any) => t.done).length;
   const todayTotalCount = initialTasks.length;
 
-  // Today's estimated study time calculation
-  const todayTotalMins = initialTasks.reduce((acc: number, t: any) => acc + (t.estimated_minutes || 30), 0);
-  const todayCompletedMins = initialTasks.filter((t: any) => t.done).reduce((acc: number, t: any) => acc + (t.estimated_minutes || 30), 0);
-  const todayRemainingMins = Math.max(0, todayTotalMins - todayCompletedMins);
-
-  const formatMins = (mins: number) => {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h > 0 && m > 0) return `${h}h ${m}m`;
-    if (h > 0) return `${h}h`;
-    return `${m}m`;
-  };
-
   // Category breakdown for readiness metrics
   const codingTasks = allTasks.filter((t: any) => (t.type || "").toLowerCase() === "coding");
   const codingDone = codingTasks.filter((t: any) => t.status === "done" || t.done).length;
@@ -121,6 +108,25 @@ export const DashboardPage: React.FC = () => {
   const currentHour = new Date().getHours();
   const timeGreeting = currentHour < 12 ? "Good morning" : currentHour < 17 ? "Good afternoon" : "Good evening";
 
+  // Real-time time remaining for today (hours & minutes left for this day)
+  const [timeLeftToday, setTimeLeftToday] = React.useState<{ hours: number; minutes: number }>({ hours: 0, minutes: 0 });
+
+  React.useEffect(() => {
+    const updateTimeLeft = () => {
+      const now = new Date();
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const diffMs = Math.max(0, endOfDay.getTime() - now.getTime());
+      const totalMins = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(totalMins / 60);
+      const minutes = totalMins % 60;
+      setTimeLeftToday({ hours, minutes });
+    };
+
+    updateTimeLeft();
+    const interval = setInterval(updateTimeLeft, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-8">
       {/* Top Header */}
@@ -157,11 +163,20 @@ export const DashboardPage: React.FC = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Current Progress Day", value: `Day ${currentDayNum}`, icon: Flame, bg: "bg-amber-50", ic: "text-amber-500", sub: `🔥 ${rawDays.length || profile.daysRemaining} total days planned`, sc: "text-amber-600" },
+          {
+            label: "Current Progress Day",
+            value: `Day ${currentDayNum}`,
+            icon: Flame,
+            bg: "bg-amber-50",
+            ic: "text-amber-500",
+            sub: `⏳ ${timeLeftToday.hours}h ${timeLeftToday.minutes}m left for this day`,
+            sc: "text-amber-600 font-semibold",
+            extraSub: `🔥 ${rawDays.length || profile.daysRemaining} total days planned`
+          },
           { label: "Readiness Score", value: `${readinessScore}%`, icon: Target, bg: "bg-blue-50", ic: "text-blue-600", sub: `${completedTasksCount} of ${totalTasksCount} tasks complete`, sc: "text-blue-600" },
           { label: "Today's Tasks", value: `${todayCompletedCount} / ${todayTotalCount}`, icon: CheckCircle, bg: "bg-green-50", ic: "text-green-600", sub: `${todayTotalCount - todayCompletedCount} pending today`, sc: "text-green-600" },
-          { label: "Hours Completed", value: `${completedHours}h`, icon: Clock, bg: "bg-purple-50", ic: "text-purple-600", sub: todayRemainingMins > 0 ? `Today: ~${formatMins(todayRemainingMins)} left` : `Today's tasks done! 🎉`, sc: "text-purple-600" },
-        ].map(({ label, value, icon: Icon, bg, ic, sub, sc }) => (
+          { label: "Hours Completed", value: `${completedHours}h`, icon: Clock, bg: "bg-purple-50", ic: "text-purple-600", sub: `Total plan: ${totalPlannedHours}h`, sc: "text-purple-600" },
+        ].map(({ label, value, icon: Icon, bg, ic, sub, sc, extraSub }) => (
           <GlassCard key={label} className="p-4">
             <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center mb-3`}>
               <Icon className={`w-4 h-4 ${ic}`} />
@@ -169,6 +184,7 @@ export const DashboardPage: React.FC = () => {
             <div className="text-xl font-bold text-[#111827]">{value}</div>
             <div className="text-xs text-[#6B7280] mt-0.5">{label}</div>
             <div className={`text-xs mt-1.5 font-medium ${sc}`}>{sub}</div>
+            {extraSub && <div className="text-[11px] text-amber-700/80 mt-0.5 font-medium">{extraSub}</div>}
           </GlassCard>
         ))}
       </div>
@@ -178,43 +194,27 @@ export const DashboardPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-5">
           {/* Tasks */}
           <GlassCard className="p-6">
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-semibold text-[#111827]">Today's Tasks (Day {currentDayNum})</h3>
-                <div className="flex items-center gap-2 text-xs text-[#6B7280] mt-0.5">
-                  <span>{todayCompletedCount} of {todayTotalCount} completed</span>
-                  <span>·</span>
-                  <span className="text-[#2563EB] font-medium flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-[#2563EB]" />
-                    {todayRemainingMins > 0 ? `~${formatMins(todayRemainingMins)} remaining today` : "All tasks completed! 🎉"}
-                  </span>
-                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">{todayCompletedCount} of {todayTotalCount} completed</p>
               </div>
               <Btn size="sm" variant="ghost" onClick={() => navigate("/planner")}>
                 <Clock className="w-3.5 h-3.5" /> Full Planner
               </Btn>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {initialTasks.map((task: any) => (
                 <button
                   key={task.id}
                   onClick={() => toggleTask(task.id, task.done)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all cursor-pointer border ${
-                    task.done ? "bg-gray-50/70 border-transparent opacity-75" : "bg-white hover:bg-slate-50 border-gray-100 hover:border-blue-100 shadow-2xs"
-                  }`}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors cursor-pointer ${task.done ? "bg-gray-50" : "hover:bg-gray-50"}`}
                 >
                   {task.done
                     ? <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
                     : <Circle className="w-4 h-4 text-gray-300 shrink-0" />
                   }
-                  <span className={`text-sm flex-1 ${task.done ? "line-through text-[#9CA3AF]" : "text-[#374151] font-medium"}`}>{task.label}</span>
-                  
-                  {/* Estimated Time Pill */}
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-[11px] font-medium border border-blue-100/60 shrink-0">
-                    <Clock className="w-3 h-3 text-blue-500" />
-                    {formatMins(task.estimated_minutes)}
-                  </span>
-
+                  <span className={`text-sm flex-1 ${task.done ? "line-through text-[#9CA3AF]" : "text-[#374151]"}`}>{task.label}</span>
                   <Badge color={task.priority === "high" ? "red" : task.priority === "medium" ? "amber" : "gray"}>
                     {task.priority}
                   </Badge>
