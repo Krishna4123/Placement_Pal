@@ -85,14 +85,23 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setParsedNotification(data);
     localStorage.setItem('placementpal_parsed_notification', JSON.stringify(data));
     
-    let days = data.preparation_duration_days;
+    // Track session creation timestamp for real-time calendar day countdowns
+    const createdAtStr = new Date().toISOString();
+    localStorage.setItem('placementpal_created_at', createdAtStr);
+
+    let days = data.preparation_duration_days || 14;
     if (data.interview_date) {
       const parsed = new Date(data.interview_date);
       if (!isNaN(parsed.getTime())) {
-        const diff = Math.ceil((parsed.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const targetStart = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+        const diff = Math.ceil((targetStart.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
         days = diff > 0 ? diff : 1;
       }
     }
+
+    localStorage.setItem('placementpal_total_days', String(days));
 
     setProfile((prev) => ({
       ...prev,
@@ -104,8 +113,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const startNewSession = (newCompany?: string) => {
     const newId = 'active_session';
+    const createdAtStr = new Date().toISOString();
     localStorage.setItem('placementpal_session_id', newId);
     localStorage.setItem('placementpal_active_session', 'true');
+    localStorage.setItem('placementpal_created_at', createdAtStr);
     setSessionId(newId);
     setHasActiveSession(true);
     if (newCompany) {
@@ -118,6 +129,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.removeItem('placementpal_active_session');
     localStorage.removeItem('placementpal_parsed_notification');
     localStorage.removeItem('placementpal_user_resume');
+    localStorage.removeItem('placementpal_created_at');
+    localStorage.removeItem('placementpal_total_days');
     setHasActiveSession(false);
     setPlacementState(null);
     setParsedNotification(null);
@@ -132,6 +145,48 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const res = await stateApi.getState(activeId);
       if (res && res.data) {
         const stateData = res.data;
+
+        // Calculate real-time calendar days elapsed since session creation
+        const createdAtSaved = localStorage.getItem('placementpal_created_at') || stateData.created_at;
+        let elapsedDays = 0;
+        if (createdAtSaved) {
+          const createdDate = new Date(createdAtSaved);
+          if (!isNaN(createdDate.getTime())) {
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const createdStart = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+            elapsedDays = Math.max(0, Math.floor((todayStart.getTime() - createdStart.getTime()) / (1000 * 60 * 60 * 24)));
+          }
+        }
+
+        const comp = stateData.target_companies?.[0] || profile.targetCompany;
+        const role = stateData.target_roles?.[0] || profile.targetRole;
+        const rawDate = stateData.interpreted_intent?.interview_date;
+        let totalDays: number = stateData.preparation_duration_days || parseInt(localStorage.getItem('placementpal_total_days') || '14', 10);
+        let daysRemaining: number = totalDays;
+
+        if (rawDate) {
+          const parsed = new Date(rawDate);
+          if (!isNaN(parsed.getTime())) {
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            const targetStart = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+            const diff = Math.ceil((targetStart.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
+            daysRemaining = diff > 0 ? diff : 1;
+          }
+        } else {
+          daysRemaining = Math.max(1, totalDays - elapsedDays);
+        }
+
+        // Synchronize current_day & start_date in real time with daysRemaining and totalDays
+        const calculatedCurrentDay = Math.min(totalDays, Math.max(1, totalDays - daysRemaining + 1));
+        stateData.current_day = calculatedCurrentDay;
+        
+        const realElapsedDays = Math.max(0, totalDays - daysRemaining);
+        const realStartDate = new Date();
+        realStartDate.setDate(realStartDate.getDate() - realElapsedDays);
+        stateData.start_date = `${realStartDate.getFullYear()}-${String(realStartDate.getMonth() + 1).padStart(2, "0")}-${String(realStartDate.getDate()).padStart(2, "0")}`;
+
         setPlacementState(stateData);
 
         if (!parsedNotification && stateData.parsed_notification) {
@@ -140,24 +195,11 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
           localStorage.setItem('placementpal_parsed_notification', JSON.stringify(pn));
         }
 
-        const comp = stateData.target_companies?.[0] || profile.targetCompany;
-        const role = stateData.target_roles?.[0] || profile.targetRole;
-        const rawDate = stateData.interpreted_intent?.interview_date;
-        let days: number | undefined = stateData.interpreted_intent?.preparation_duration_days;
-
-        if (rawDate) {
-          const parsed = new Date(rawDate);
-          if (!isNaN(parsed.getTime())) {
-            const diff = Math.ceil((parsed.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-            days = diff > 0 ? diff : 1;
-          }
-        }
-
         setProfile((prev) => ({
           ...prev,
           targetCompany: comp || prev.targetCompany,
           targetRole: role || prev.targetRole,
-          daysRemaining: days || prev.daysRemaining,
+          daysRemaining: daysRemaining,
         }));
       }
 
