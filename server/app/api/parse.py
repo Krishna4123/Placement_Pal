@@ -162,6 +162,7 @@ async def parse_notification(body: ParseRequest) -> APIResponse[dict[str, Any]]:
         existing = await session_service.get_session(body.session_id)
         if not existing:
             await session_service.create_session(body.session_id)
+        now_dt = datetime.utcnow()
         await session_service.update_session(body.session_id, {
             "interpreted_intent": interpreted_intent,
             "target_companies": [company] if company else [],
@@ -169,6 +170,8 @@ async def parse_notification(body: ParseRequest) -> APIResponse[dict[str, Any]]:
             "preparation_duration_days": prep_days,
             "company_intel": company_intel,
             "parsed_notification": parsed,
+            "created_at": now_dt,
+            "updated_at": now_dt,
         })
         logger.info("Parsed notification saved to session %s", body.session_id)
     except Exception as e:
