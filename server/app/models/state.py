@@ -72,6 +72,10 @@ class PlacementState(BaseModel):
     # ── Metadata ──────────────────────────────────────────────
     phase: SessionPhase = Field(default=SessionPhase.INIT)
     errors: list[str] = Field(default_factory=list)
+    start_date: Optional[str] = Field(
+        default=None,
+        description="ISO date string (YYYY-MM-DD) representing Day 1 start date.",
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -92,6 +92,12 @@ class TaskResourcesResponse(BaseModel):
     resources: list[ResourceLink]
 
 
+class UpdateStartDateResponse(BaseModel):
+    session_id: str
+    start_date: str
+    updated: bool = True
+
+
 # ── /state ────────────────────────────────────────────────────
 
 class StateResponse(BaseModel):

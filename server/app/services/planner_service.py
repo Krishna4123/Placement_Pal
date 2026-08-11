@@ -100,6 +100,30 @@ class PlannerService:
             "current_day": new_day,
         }
 
+    async def update_start_date(
+        self, session_id: str, start_date: str
+    ) -> dict[str, Any]:
+        """
+        Update the start_date for the placement plan.
+        """
+        col = get_sessions_collection()
+        await col.update_one(
+            {"session_id": session_id},
+            {
+                "$set": {
+                    "start_date": start_date,
+                    "updated_at": datetime.utcnow(),
+                }
+            },
+            upsert=True,
+        )
+        logger.info("Updated start_date for session %s to %s", session_id, start_date)
+        return {
+            "session_id": session_id,
+            "start_date": start_date,
+            "updated": True,
+        }
+
     async def get_day_plan(self, session_id: str, day: int) -> dict[str, Any]:
         """
         Return the task list for a specific day.

@@ -12,8 +12,8 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.services.planner_service import PlannerService
-from app.models.request_models import MarkTaskRequest, AdvanceDayRequest, TaskResourcesRequest
-from app.models.response_models import APIResponse, MarkTaskResponse, AdvanceDayResponse, TaskResourcesResponse, ResourceLink
+from app.models.request_models import MarkTaskRequest, AdvanceDayRequest, TaskResourcesRequest, UpdateStartDateRequest
+from app.models.response_models import APIResponse, MarkTaskResponse, AdvanceDayResponse, TaskResourcesResponse, ResourceLink, UpdateStartDateResponse
 
 router = APIRouter(prefix="/plan", tags=["Plan"])
 planner_service = PlannerService()
@@ -96,3 +96,27 @@ async def get_task_resources(body: TaskResourcesRequest):
         message=f"Found {len(links)} resources",
         data=resp_data,
     )
+
+
+@router.post(
+    "/update-start-date",
+    summary="Update the plan start date for a session",
+    status_code=status.HTTP_200_OK,
+    response_model=APIResponse[UpdateStartDateResponse],
+)
+async def update_start_date(body: UpdateStartDateRequest):
+    """
+    Sets the YYYY-MM-DD start date for Day 1 of the preparation plan.
+    """
+    res = await planner_service.update_start_date(body.session_id, body.start_date)
+    resp_data = UpdateStartDateResponse(
+        session_id=res["session_id"],
+        start_date=res["start_date"],
+        updated=res["updated"],
+    )
+    return APIResponse[UpdateStartDateResponse](
+        success=True,
+        message="Plan start date updated successfully",
+        data=resp_data,
+    )
+

@@ -38,6 +38,9 @@ async def get_state(session_id: str):
     if session.curriculum and isinstance(session.curriculum, dict):
         curriculum_days = len(session.curriculum.get("days", []))
 
+    created_at_val = session.created_at.isoformat() if hasattr(session.created_at, "isoformat") else session.created_at
+    start_date_val = session.start_date or (str(created_at_val)[:10] if created_at_val else None)
+
     # Return the complete state so every page has access to all fields
     full_state: dict[str, Any] = {
         "session_id": session.session_id,
@@ -48,6 +51,8 @@ async def get_state(session_id: str):
         "preparation_duration_days": session.preparation_duration_days,
         "curriculum_days_total": curriculum_days or session.preparation_duration_days,
         "errors": session.errors or [],
+        "created_at": created_at_val,
+        "start_date": start_date_val,
         # Full pipeline outputs — used by CompanyPage, PlannerPage, CurriculumPage, RecallPage
         "interpreted_intent": session.interpreted_intent,
         "company_intel": session.company_intel,
