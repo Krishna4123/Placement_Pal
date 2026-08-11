@@ -36,7 +36,8 @@ const routeTitles: Record<string, string> = {
 export const AppLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile } = useSession();
+  const { profile, placementState } = useSession();
+  const activeCompany = placementState?.target_companies?.[0] || profile.targetCompany;
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -52,39 +53,41 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] overflow-hidden antialiased">
-      {/* Mobile backdrop */}
+      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/20 z-20 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:relative inset-y-0 left-0 z-30 w-64 flex-shrink-0 transition-transform duration-300 ${
+        className={`fixed md:static inset-y-0 left-0 w-64 bg-white border-r border-gray-100 z-50 transition-transform duration-200 flex flex-col ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        } shadow-xl md:shadow-none border-r border-gray-100 bg-white flex flex-col h-full`}
+        }`}
       >
-        {/* Brand header */}
-        <div className="h-16 flex items-center justify-between px-5 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate("/dashboard")}>
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4 text-white" />
+        {/* Sidebar Header */}
+        <div className="h-16 px-5 border-b border-gray-100 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center text-white text-xs font-bold shadow-md shadow-blue-200/50">
+              PP
             </div>
             <div>
-              <div className="text-sm font-semibold text-[#111827] leading-tight">PlacementPal</div>
-              <div className="text-[10px] text-[#9CA3AF] leading-tight">AI Mentor</div>
+              <div className="font-bold text-sm text-[#111827] leading-none">PlacementPal</div>
+              <div className="text-[10px] text-[#6B7280] mt-0.5 font-medium">AI Career Agent</div>
             </div>
           </div>
-          <button className="md:hidden p-1 rounded-lg hover:bg-gray-100" onClick={() => setSidebarOpen(false)}>
-            <X className="w-4 h-4 text-gray-400" />
+          <button
+            className="md:hidden p-1 rounded-lg text-gray-400 hover:text-gray-600"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Navigation list */}
-        <nav className="flex-1 py-3 px-3 space-y-0.5 overflow-y-auto">
-          <div className="px-3 py-1.5 text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider">Menu</div>
+        {/* Sidebar Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map(({ path, icon: Icon, label, badge }) => (
             <NavLink
               key={path}
@@ -115,7 +118,7 @@ export const AppLayout: React.FC = () => {
         <div className="p-3 border-t border-gray-100 shrink-0">
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100 rounded-xl p-3 mb-3">
             <div className="text-xs font-semibold text-[#111827] mb-0.5">Interview in {profile.daysRemaining} days</div>
-            <div className="text-[11px] text-[#6B7280] mb-2">{profile.targetCompany} · Stay on track!</div>
+            <div className="text-[11px] text-[#6B7280] mb-2">{activeCompany} · Stay on track!</div>
             <ProgressBar value={55} color="#2563EB" />
           </div>
           <button
@@ -123,7 +126,7 @@ export const AppLayout: React.FC = () => {
               navigate("/settings");
               setSidebarOpen(false);
             }}
-            className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors text-left"
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-gray-50 text-left transition-colors"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2563EB] to-[#7C3AED] flex items-center justify-center text-white text-xs font-semibold shrink-0">
               {getInitials(profile.name)}
@@ -145,6 +148,13 @@ export const AppLayout: React.FC = () => {
           </button>
           <h2 className="text-base font-semibold text-[#111827]">{currentTitle}</h2>
           <div className="flex-1" />
+
+          {/* Pill Badge matching user image: Target Company : Days Left */}
+          <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-slate-50/90 border border-slate-100 text-xs sm:text-sm font-medium text-slate-800 shadow-2xs">
+            <span className="font-semibold text-slate-900">{activeCompany}</span>
+            <span className="text-slate-400 font-normal">:</span>
+            <span className="font-semibold text-[#2563EB] ml-0.5">{profile.daysRemaining} Days Left</span>
+          </div>
 
           <div
             onClick={() => navigate("/settings")}
