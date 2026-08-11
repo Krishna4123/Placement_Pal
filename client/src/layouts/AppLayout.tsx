@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, BookOpen, Brain, GraduationCap,
-  Settings, Search, Bell, MessageSquare, Plus,
-  Calendar, Sparkles, X, Menu, Terminal, FileText
+  Settings, MessageSquare, Plus,
+  Calendar, Sparkles, X, Menu, FileText
 } from "lucide-react";
 import { ProgressBar } from "../components/common/UIElements";
 import { ChatPanel } from "../components/chat/ChatPanel";
@@ -19,7 +19,6 @@ const navItems = [
   { path: "/curriculum", icon: GraduationCap, label: "Curriculum" },
   { path: "/planner", icon: Calendar, label: "Daily Planner" },
   { path: "/settings", icon: Settings, label: "Settings" },
-  { path: "/debug", icon: Terminal, label: "Node Debugger" },
 ];
 
 const routeTitles: Record<string, string> = {
@@ -32,7 +31,6 @@ const routeTitles: Record<string, string> = {
   "/curriculum": "Curriculum",
   "/planner": "Daily Planner",
   "/settings": "Settings",
-  "/debug": "Node Debugger Sandbox",
 };
 
 export const AppLayout: React.FC = () => {
@@ -147,24 +145,6 @@ export const AppLayout: React.FC = () => {
           </button>
           <h2 className="text-base font-semibold text-[#111827]">{currentTitle}</h2>
           <div className="flex-1" />
-          
-          <div className="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 w-56">
-            <Search className="w-4 h-4 text-gray-400 shrink-0" />
-            <input
-              placeholder="Search topics..."
-              className="bg-transparent text-sm text-[#374151] outline-none flex-1 placeholder:text-gray-400 min-w-0"
-            />
-            <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded-md">⌘K</kbd>
-          </div>
-
-          <button className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors" title="Notifications">
-            <Bell className="w-5 h-5 text-[#6B7280]" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#EF4444] rounded-full border-2 border-white" />
-          </button>
-
-          <button onClick={() => setChatOpen(true)} className="p-2 rounded-xl hover:bg-blue-50 transition-colors" title="Open AI Assistant">
-            <MessageSquare className="w-5 h-5 text-[#2563EB]" />
-          </button>
 
           <div
             onClick={() => navigate("/settings")}
