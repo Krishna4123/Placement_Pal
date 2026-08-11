@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { stateApi, PlacementState } from '../api/state';
 import { ParsedNotification } from '../api/parse';
+import { vaultApi } from '../api/vault';
 
 export interface UserProfile {
   name: string;
@@ -69,7 +70,6 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const refreshResume = async (overrideSessionId?: string) => {
     try {
-      const { vaultApi } = await import('../api/vault');
       const activeId = overrideSessionId || sessionId || 'active_session';
       const res = await vaultApi.getResume(activeId);
       if (res && res.data) {
