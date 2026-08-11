@@ -22,6 +22,11 @@ export interface ResourceLink {
   source: string;
 }
 
+export interface UpdateStartDatePayload {
+  session_id: string;
+  start_date: string;
+}
+
 export const planApi = {
   markTask: async (payload: MarkTaskPayload) => {
     const res = await apiClient.post('/plan/mark-task', payload);
@@ -33,6 +38,10 @@ export const planApi = {
   },
   taskResources: async (payload: TaskResourcesPayload) => {
     const res = await apiClient.post('/plan/task-resources', payload);
+    return res.data;
+  },
+  updateStartDate: async (payload: UpdateStartDatePayload) => {
+    const res = await apiClient.post('/plan/update-start-date', payload);
     return res.data;
   },
 };

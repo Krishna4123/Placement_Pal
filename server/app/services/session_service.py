@@ -34,6 +34,7 @@ class SessionService:
         state = PlacementState(
             session_id=session_id,
             phase=SessionPhase.INIT,
+            start_date=now.strftime("%Y-%m-%d"),
             created_at=now,
             updated_at=now,
         )

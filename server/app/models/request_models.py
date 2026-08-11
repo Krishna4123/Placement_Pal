@@ -76,3 +76,11 @@ class TaskResourcesRequest(BaseModel):
 
     task_title: str = Field(..., min_length=1, description="The title of the task to fetch resources for.")
     task_type: str = Field(default="coding", description="One of: coding, aptitude, core.")
+
+
+class UpdateStartDateRequest(BaseModel):
+    """Request body for POST /plan/update-start-date."""
+
+    session_id: str
+    start_date: str = Field(..., description="Date string in YYYY-MM-DD format.")
+

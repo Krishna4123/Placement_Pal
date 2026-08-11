@@ -10,6 +10,7 @@ export interface PlacementState {
   curriculum_days_total: number;
   errors: string[];
   created_at?: string;
+  start_date?: string;
   updated_at?: string;
   // Full pipeline outputs populated after parse + phase1 + phase2
   interpreted_intent?: Record<string, any> | null;

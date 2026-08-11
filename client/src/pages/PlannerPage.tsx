@@ -5,6 +5,32 @@ import { useSession } from "../context/SessionContext";
 import { planApi } from "../api/plan";
 import { useNavigate } from "react-router-dom";
 
+const parseToLocalMidnight = (dateVal?: string | Date | null): Date => {
+  if (!dateVal) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  if (dateVal instanceof Date) {
+    const d = new Date(dateVal);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  const str = String(dateVal).split("T")[0];
+  const parts = str.split("-");
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      return new Date(year, month, day, 0, 0, 0, 0);
+    }
+  }
+  const d = new Date(dateVal);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
 export const PlannerPage: React.FC = () => {
   const navigate = useNavigate();
   const { profile, sessionId, placementState, refreshState } = useSession();
@@ -16,10 +42,11 @@ export const PlannerPage: React.FC = () => {
 
   const activeCompany = placementState?.target_companies?.[0] || profile.targetCompany;
 
-  // Session start date (normalized to 00:00:00)
-  const sessionCreated = placementState?.created_at ? new Date(placementState.created_at) : new Date();
-  const startDate = new Date(sessionCreated);
-  startDate.setHours(0, 0, 0, 0);
+  // Session start date (normalized to 00:00:00 local time)
+  const rawStartDateStr = placementState?.start_date || placementState?.created_at;
+  const startDate = parseToLocalMidnight(rawStartDateStr);
+
+  const startDateIsoStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
 
   // Real curriculum task days & total plan duration
   const rawDays = placementState?.curriculum?.days || [];
@@ -32,9 +59,7 @@ export const PlannerPage: React.FC = () => {
   endDate.setDate(startDate.getDate() + totalPlanDays - 1);
 
   // Calculate day number relative to startDate for currently selected date
-  const normalizedSelected = new Date(selectedDate);
-  normalizedSelected.setHours(0, 0, 0, 0);
-
+  const normalizedSelected = parseToLocalMidnight(selectedDate);
   const daysDiffFromStart = Math.round((normalizedSelected.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
   const currentDayNumber = daysDiffFromStart + 1;
 
@@ -76,6 +101,31 @@ export const PlannerPage: React.FC = () => {
     const next = new Date(baseDate);
     next.setDate(baseDate.getDate() + 7);
     setBaseDate(next);
+  };
+
+  const handleStartDateChange = async (newDateStr: string) => {
+    try {
+      await planApi.updateStartDate({
+        session_id: sessionId,
+        start_date: newDateStr,
+      });
+      await refreshState();
+    } catch (err) {
+      console.error("Failed to update start date:", err);
+    }
+  };
+
+  const setYesterdayAsStart = () => {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yStr = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
+    handleStartDateChange(yStr);
+  };
+
+  const setTodayAsStart = () => {
+    const t = new Date();
+    const tStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+    handleStartDateChange(tStr);
   };
 
   // Retrieve current day's object if within plan boundaries
@@ -150,12 +200,38 @@ export const PlannerPage: React.FC = () => {
 
       {/* Real-time Calendar Strip */}
       <GlassCard className="p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <h3 className="font-semibold text-[#111827]">{currentMonthYear}</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">
-              Plan Duration: {totalPlanDays} Days ({startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[#6B7280] mt-0.5">
+              <span>
+                Plan Duration: {totalPlanDays} Days ({startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})
+              </span>
+              <span className="text-gray-300">•</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-gray-700">Start Date:</span>
+                <input
+                  type="date"
+                  value={startDateIsoStr}
+                  onChange={(e) => e.target.value && handleStartDateChange(e.target.value)}
+                  className="bg-white border border-gray-200 rounded-md px-1.5 py-0.5 text-xs text-gray-800 shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                />
+                <button
+                  onClick={setYesterdayAsStart}
+                  title="Set plan start date to yesterday"
+                  className="px-1.5 py-0.5 text-[11px] font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 rounded border border-purple-200 transition-colors cursor-pointer"
+                >
+                  Start Yesterday
+                </button>
+                <button
+                  onClick={setTodayAsStart}
+                  title="Set plan start date to today"
+                  className="px-1.5 py-0.5 text-[11px] font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 rounded border border-blue-200 transition-colors cursor-pointer"
+                >
+                  Start Today
+                </button>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <button 
@@ -192,8 +268,7 @@ export const PlannerPage: React.FC = () => {
             const isToday = dateObj.toDateString() === todayStr;
             const isSelected = dateObj.toDateString() === selectedDate.toDateString();
 
-            const dNorm = new Date(dateObj);
-            dNorm.setHours(0, 0, 0, 0);
+            const dNorm = parseToLocalMidnight(dateObj);
             const dDiff = Math.round((dNorm.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
             const calculatedDayNum = dDiff + 1;
 
