@@ -5,20 +5,12 @@ import {
   Brain, GraduationCap, TrendingUp, Calendar, CheckCircle, Circle, Zap, Info, Mail
 } from "lucide-react";
 import { GlassCard, Badge, Btn } from "../components/common/UIElements";
-import { useSession } from "../context/SessionContext";
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { startNewSession } = useSession();
 
-  const handleStartDemo = () => {
-    startNewSession("Google");
-    navigate("/dashboard");
-  };
-
-  const handleStartNew = () => {
-    startNewSession();
-    navigate("/new-session");
+  const handleGetStarted = () => {
+    navigate("/login");
   };
 
   const features = [
@@ -67,10 +59,10 @@ export const LandingPage: React.FC = () => {
                 Transform placement notifications into personalized interview preparation plans. PlacementPal AI analyzes company requirements, builds custom curricula, and guides you from notification to offer letter.
               </p>
               <div className="flex flex-wrap gap-4 mb-8">
-                <Btn variant="gradient" size="lg" onClick={handleStartNew}>
+                <Btn variant="gradient" size="lg" onClick={handleGetStarted}>
                   Get Started Free <ArrowRight className="w-4 h-4" />
                 </Btn>
-                <Btn variant="secondary" size="lg" onClick={handleStartDemo}>
+                <Btn variant="secondary" size="lg" onClick={handleGetStarted}>
                   <Play className="w-4 h-4 text-[#2563EB]" /> Demo Dashboard
                 </Btn>
               </div>
@@ -245,7 +237,7 @@ export const LandingPage: React.FC = () => {
             <h2 className="text-4xl font-bold mb-4">Ready to crack your dream placement?</h2>
             <p className="text-blue-100 mb-8 max-w-md mx-auto">Join thousands of engineering students who used PlacementPal AI to land their dream jobs at top tech companies.</p>
             <button
-              onClick={handleStartNew}
+              onClick={handleGetStarted}
               className="bg-white text-[#2563EB] font-semibold px-8 py-3.5 rounded-xl hover:bg-blue-50 transition-colors inline-flex items-center gap-2 text-base cursor-pointer"
             >
               Start Preparing Now <ArrowRight className="w-4 h-4" />
