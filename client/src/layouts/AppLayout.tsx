@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, BookOpen, Brain, GraduationCap,
   Settings, Search, Bell, MessageSquare, Plus,
-  Calendar, Sparkles, X, Menu, Terminal, LogOut
+  Calendar, Sparkles, X, Menu, Terminal, LogOut, FileText
 } from "lucide-react";
 import { ProgressBar } from "../components/common/UIElements";
 import { ChatPanel } from "../components/chat/ChatPanel";
