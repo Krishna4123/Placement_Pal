@@ -22,6 +22,7 @@ VAULT_FILES_COLLECTION  = "vault_files"
 PROGRESS_COLLECTION     = "progress"
 COMPANY_CACHE_COLLECTION = "company_cache"
 RESUMES_COLLECTION       = "resumes"
+USERS_COLLECTION        = "users"
 
 
 def get_sessions_collection() -> AsyncIOMotorCollection:
@@ -47,3 +48,6 @@ def get_company_cache_collection() -> AsyncIOMotorCollection:
 def get_resumes_collection() -> AsyncIOMotorCollection:
     return get_database()[RESUMES_COLLECTION]
 
+
+def get_users_collection() -> AsyncIOMotorCollection:
+    return get_database()[USERS_COLLECTION]

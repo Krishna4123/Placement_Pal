@@ -31,12 +31,12 @@ export const LandingLayout: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/login")}
               className="hidden md:block text-sm text-[#6B7280] hover:text-[#111827] px-3 py-2 transition-colors cursor-pointer"
             >
               Sign In
             </button>
-            <Btn variant="gradient" onClick={() => navigate("/new-session")}>
+            <Btn variant="gradient" onClick={() => navigate("/login")}>
               Get Started
             </Btn>
             <button className="md:hidden p-2 rounded-xl hover:bg-gray-100" onClick={() => setMenuOpen(!menuOpen)}>
@@ -50,8 +50,8 @@ export const LandingLayout: React.FC = () => {
             {["Features", "How It Works", "About", "Contact"].map((item) => (
               <a key={item} href="#" className="block py-2 text-sm text-[#6B7280] hover:text-[#111827]">{item}</a>
             ))}
-            <button onClick={() => navigate("/dashboard")} className="block py-2 text-sm font-semibold text-[#2563EB]">
-              Sign In to Dashboard
+            <button onClick={() => navigate("/login")} className="block py-2 text-sm font-semibold text-[#2563EB]">
+              Sign In
             </button>
           </div>
         )}
