@@ -39,6 +39,10 @@ async def connect_to_mongo() -> None:
     await _db.command("ping")
     logger.info("MongoDB ping OK (database: %s)", settings.database_name)
 
+    # Ensure unique index on users.email for authentication
+    await _db["users"].create_index("email", unique=True)
+    logger.info("Ensured unique index on users.email")
+
 
 async def close_mongo_connection() -> None:
     """Close the Motor connection pool. Called once at application shutdown."""

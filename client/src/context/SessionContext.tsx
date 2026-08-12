@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { stateApi, PlacementState } from '../api/state';
 import { ParsedNotification } from '../api/parse';
+import { useAuth } from './AuthContext';
 
 export interface UserProfile {
   name: string;
@@ -43,6 +44,7 @@ const defaultProfile: UserProfile = {
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user: authUser, logout: authLogout } = useAuth();
   const [sessionId, setSessionId] = useState<string>("active_session");
 
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(() => {
@@ -51,7 +53,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [profile, setProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('placementpal_profile');
-    return saved ? JSON.parse(saved) : defaultProfile;
+    if (saved) return JSON.parse(saved);
+    // Use authenticated user info if available
+    return {
+      ...defaultProfile,
+      name: authUser?.name || defaultProfile.name,
+      email: authUser?.email || defaultProfile.email,
+    };
   });
 
   const [placementState, setPlacementState] = useState<PlacementState | null>(null);
@@ -101,6 +109,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setHasActiveSession(false);
     setPlacementState(null);
     setParsedNotification(null);
+    // Also clear auth state
+    authLogout();
   };
 
   const refreshState = async (overrideSessionId?: string) => {
@@ -150,6 +160,17 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem('placementpal_profile', JSON.stringify(profile));
   }, [profile]);
+
+  // Sync profile name/email when auth user changes
+  useEffect(() => {
+    if (authUser) {
+      setProfile((prev) => ({
+        ...prev,
+        name: authUser.name || prev.name,
+        email: authUser.email || prev.email,
+      }));
+    }
+  }, [authUser]);
 
   useEffect(() => {
     if (hasActiveSession && sessionId) {

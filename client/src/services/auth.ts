@@ -1,14 +1,22 @@
 /**
- * Frontend-only authentication service stub.
+ * Frontend authentication service — real API integration.
  *
- * All methods simulate network latency with a short delay.
- * Replace the internals with a real auth provider (e.g. Supabase Auth)
- * when backend authentication is ready — the call-sites stay the same.
+ * Communicates with the FastAPI /auth/* endpoints.
+ * Tokens are stored in localStorage; the axios interceptor
+ * in api/client.ts attaches them automatically.
  */
 
+import { apiClient } from '../api/client';
+
+// ── Types ────────────────────────────────────────────────
+
 export interface AuthUser {
+  id: string;
   name: string;
   email: string;
+  auth_provider?: string;
+  is_active?: boolean;
+  created_at?: string;
 }
 
 export interface AuthResult {
@@ -17,61 +25,92 @@ export interface AuthResult {
   error?: string;
 }
 
-const SIMULATED_DELAY_MS = 1200;
+const TOKEN_KEY = 'placementpal_access_token';
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// ── Token helpers ────────────────────────────────────────
 
-/**
- * Simulate a login request.
- * Currently always succeeds after a short delay.
- */
-export async function login(email: string, _password: string): Promise<AuthResult> {
-  await delay(SIMULATED_DELAY_MS);
-
-  // Placeholder — swap with real API / Supabase call
-  return {
-    success: true,
-    user: { name: email.split("@")[0], email },
-  };
+export function getStoredToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
 }
 
-/**
- * Simulate a sign-up request.
- * Currently always succeeds after a short delay.
- */
+export function storeToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+// ── Login (email + password) ─────────────────────────────
+
+export async function login(email: string, password: string): Promise<AuthResult> {
+  try {
+    const res = await apiClient.post('/auth/login', { email, password });
+    const { access_token, user } = res.data;
+    storeToken(access_token);
+    return { success: true, user };
+  } catch (err: any) {
+    const detail = err?.response?.data?.detail;
+    return {
+      success: false,
+      error: detail || 'Unable to connect to the server. Please try again.',
+    };
+  }
+}
+
+// ── Sign-up (email + password) ───────────────────────────
+
 export async function signup(
   name: string,
   email: string,
-  _password: string,
+  password: string,
+  confirmPassword: string,
 ): Promise<AuthResult> {
-  await delay(SIMULATED_DELAY_MS);
-
-  // Placeholder — swap with real API / Supabase call
-  return {
-    success: true,
-    user: { name, email },
-  };
+  try {
+    const res = await apiClient.post('/auth/signup', {
+      name,
+      email,
+      password,
+      confirm_password: confirmPassword,
+    });
+    const { access_token, user } = res.data;
+    storeToken(access_token);
+    return { success: true, user };
+  } catch (err: any) {
+    const detail = err?.response?.data?.detail;
+    return {
+      success: false,
+      error: detail || 'Unable to connect to the server. Please try again.',
+    };
+  }
 }
 
-/**
- * Initiate Google Sign-In.
- * Placeholder — wire up with Google OAuth / Supabase Google provider when ready.
- */
-export async function googleSignIn(): Promise<AuthResult> {
-  await delay(SIMULATED_DELAY_MS);
 
-  // Placeholder — replace with real Google OAuth flow
-  console.info("[auth] Google Sign-In triggered — provider not yet configured.");
-  return {
-    success: false,
-    error: "Google Sign-In is not yet configured. Please use email login.",
-  };
+// ── Get current user (session restore) ───────────────────
+
+export async function getCurrentUser(): Promise<AuthResult> {
+  const token = getStoredToken();
+  if (!token) {
+    return { success: false };
+  }
+
+  try {
+    const res = await apiClient.get('/auth/me');
+    return { success: true, user: res.data };
+  } catch {
+    // Token expired or invalid — clear it
+    clearToken();
+    return { success: false };
+  }
 }
 
-/**
- * Clear any stored authentication tokens / state.
- */
+// ── Logout ───────────────────────────────────────────────
+
 export function logout(): void {
-  // Placeholder — clear tokens, cookies, etc. when real auth is wired up
+  clearToken();
+  // Also clear session-related localStorage entries
+  localStorage.removeItem('placementpal_active_session');
+  localStorage.removeItem('placementpal_parsed_notification');
+  localStorage.removeItem('placementpal_profile');
+  localStorage.removeItem('placementpal_session_id');
 }
-
