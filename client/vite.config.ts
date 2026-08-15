@@ -33,4 +33,26 @@ export default defineConfig({
     },
   },
   assetsInclude: ['**/*.svg', '**/*.csv'],
+  server: {
+    warmup: {
+      clientFiles: [
+        './src/main.tsx',
+        './src/App.tsx',
+        './src/layouts/AppLayout.tsx',
+        './src/pages/DashboardPage.tsx',
+      ],
+    },
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'lucide-react',
+      'axios',
+      'recharts',
+      'motion',
+      'date-fns',
+    ],
+  },
 })
