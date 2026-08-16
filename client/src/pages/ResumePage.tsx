@@ -4,7 +4,10 @@ import {
   FileText, CheckCircle, Sparkles, Award, ShieldCheck, 
   AlertCircle, FileCheck, Brain, XCircle, CheckCircle2, ArrowRight, Upload
 } from "lucide-react";
+import { motion } from "motion/react";
 import { GlassCard, Badge, Btn } from "../components/common/UIElements";
+import { AnimatedCounter } from "../components/animations/AnimatedCounter";
+import { useReveal } from "../hooks/useReveal";
 import { useSession } from "../context/SessionContext";
 
 const isSkillMatch = (expectedSkill: string, resumeSkill: string): boolean => {
@@ -144,14 +147,17 @@ export const ResumePage: React.FC = () => {
     return `Excellent fit! Your resume strongly aligns with tech stack requirements for ${activeCompany}.`;
   }, [resumeData, missingTechStack, activeCompany]);
 
+  const { ref: resumeRef, inView: resumeInView } = useReveal<HTMLDivElement>({ threshold: 0.1 });
+
   return (
     <div className="max-w-5xl mx-auto pb-10 space-y-6">
       {/* Header Banner */}
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
       <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-md">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-blue-200" />
-            <h2 className="text-xl font-bold">Resume & ATS Evaluation Hub</h2>
+            <h2 className="text-xl font-bold">Resume &amp; ATS Evaluation Hub</h2>
           </div>
           <p className="text-sm text-blue-100 max-w-xl">
             Read-only candidate profile analysis comparing your resume tech stack directly against <span className="font-semibold text-white">{activeCompany}</span>'s hiring requirements.
@@ -162,16 +168,17 @@ export const ResumePage: React.FC = () => {
           <span>ATS Evaluation Active</span>
         </div>
       </div>
+      </motion.div>
 
       {/* Main Content */}
       {!resumeData ? (
         <GlassCard className="p-10 text-center space-y-4 max-w-2xl mx-auto">
-          <div className="w-16 h-16 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto border border-purple-100 shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto border border-purple-100 dark:border-purple-900/50 shadow-sm">
             <FileText className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-[#111827]">No Resume Uploaded for Active Session</h3>
-            <p className="text-sm text-[#6B7280] mt-1 max-w-md mx-auto leading-relaxed">
+            <h3 className="text-lg font-bold text-foreground">No Resume Uploaded for Active Session</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto leading-relaxed">
               Upload your resume when starting a new session to automatically trigger ATS score calculation, company tech stack matching, and resume-driven active recall guides.
             </p>
           </div>
@@ -184,7 +191,7 @@ export const ResumePage: React.FC = () => {
           </div>
         </GlassCard>
       ) : (
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6" ref={resumeRef}>
           {/* Left Column (2 Cols): Resume Info & Skill Match Analysis */}
           <div className="md:col-span-2 space-y-6">
             {/* Resume File Summary */}

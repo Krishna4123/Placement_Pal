@@ -1,0 +1,229 @@
+/* ══════════════════════════════════════════════════════════
+   PlacementPal AI — animations.css
+   Global animation keyframes, utilities, and micro-interactions
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ──────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  33%       { transform: translateY(-6px) translateX(3px); }
+  66%       { transform: translateY(-3px) translateX(-3px); }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(37, 99, 235, 0.25); }
+  50%       { box-shadow: 0 0 24px rgba(37, 99, 235, 0.45), 0 0 40px rgba(124, 58, 237, 0.15); }
+}
+
+@keyframes glow-pulse-soft {
+  0%, 100% { box-shadow: 0 0 8px rgba(37, 99, 235, 0.15); }
+  50%       { box-shadow: 0 0 16px rgba(37, 99, 235, 0.30); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes neural-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.08); }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+@keyframes step-reveal {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes blob-drift {
+  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) scale(1); }
+  33%       { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: translate(15px, -10px) scale(1.05); }
+  66%       { border-radius: 20% 60% 60% 40% / 70% 30% 60% 40%; transform: translate(-10px, 10px) scale(0.97); }
+}
+
+/* ── Utility Classes ────────────────────────────────────── */
+
+.animate-fade-in     { animation: fadeIn 0.18s ease-out both; }
+.animate-fade-up     { animation: fadeUp 0.45s cubic-bezier(.22,1,.36,1) both; }
+.animate-fade-down   { animation: fadeDown 0.35s cubic-bezier(.22,1,.36,1) both; }
+.animate-scale-in    { animation: scaleIn 0.35s cubic-bezier(.22,1,.36,1) both; }
+.animate-float       { animation: float 4s ease-in-out infinite; }
+.animate-float-slow  { animation: floatSlow 6s ease-in-out infinite; }
+.animate-glow-pulse  { animation: glow-pulse 2.5s ease-in-out infinite; }
+.animate-glow-soft   { animation: glow-pulse-soft 3s ease-in-out infinite; }
+.animate-spin-slow   { animation: spin-slow 8s linear infinite; }
+.animate-neural      { animation: neural-pulse 2s ease-in-out infinite; }
+.animate-blob        { animation: blob-drift 8s ease-in-out infinite; }
+
+/* Stagger delays */
+.stagger-1  { animation-delay: 0.05s; }
+.stagger-2  { animation-delay: 0.10s; }
+.stagger-3  { animation-delay: 0.15s; }
+.stagger-4  { animation-delay: 0.20s; }
+.stagger-5  { animation-delay: 0.25s; }
+.stagger-6  { animation-delay: 0.30s; }
+.stagger-7  { animation-delay: 0.35s; }
+.stagger-8  { animation-delay: 0.40s; }
+
+/* ── Card Hover Lift ────────────────────────────────────── */
+.card-hover {
+  transition: transform 250ms cubic-bezier(.22,1,.36,1),
+              box-shadow 250ms ease,
+              border-color 250ms ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-3px) scale(1.008);
+  box-shadow: 0 12px 32px -4px rgba(37, 99, 235, 0.12),
+              0 4px 12px -2px rgba(0, 0, 0, 0.06);
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+/* ── Button Shimmer ─────────────────────────────────────── */
+.btn-shimmer {
+  background-size: 200% 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255,255,255,0.18) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+/* ── Gradient Text Animation ────────────────────────────── */
+.gradient-text-animated {
+  background: linear-gradient(
+    135deg,
+    #2563EB 0%,
+    #7C3AED 30%,
+    #2563EB 60%,
+    #06B6D4 80%,
+    #2563EB 100%
+  );
+  background-size: 300% 300%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 5s ease infinite;
+}
+
+/* ── Focus Glow Input ───────────────────────────────────── */
+.input-glow {
+  transition: box-shadow 250ms ease, border-color 250ms ease;
+}
+.input-glow:focus {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.5);
+  outline: none;
+}
+
+/* ── Active Nav Glow ────────────────────────────────────── */
+.nav-active-glow {
+  box-shadow: inset 3px 0 0 #2563EB,
+              0 0 16px rgba(37, 99, 235, 0.08);
+}
+
+/* ── Progress Fill on mount ─────────────────────────────── */
+.progress-animate .progress-fill {
+  animation: progress-fill 0.8s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* ── Floating Blobs (background decor) ─────────────────── */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: blob-drift 10s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.blob-blue  { background: rgba(37, 99, 235, 0.4); }
+.blob-purple { background: rgba(124, 58, 237, 0.35); }
+.blob-cyan  { background: rgba(6, 182, 212, 0.3); }
+
+/* ── Chip / Tag Hover ───────────────────────────────────── */
+.chip-hover {
+  transition: transform 200ms ease, box-shadow 200ms ease,
+              background 200ms ease, border-color 200ms ease;
+}
+.chip-hover:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+.chip-hover.chip-active {
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.4),
+              0 4px 16px rgba(37, 99, 235, 0.2);
+}
+
+/* ── Step Reveal (interview timeline) ──────────────────── */
+.step-reveal {
+  animation: step-reveal 0.4s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* ── Reduced Motion Override ────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .btn-shimmer::after { display: none; }
+  .gradient-text-animated {
+    animation: none;
+    background: linear-gradient(135deg, #2563EB, #7C3AED);
+  }
+}

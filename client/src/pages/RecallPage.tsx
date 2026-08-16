@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Bot, Sparkles, Brain, CheckCircle2, ChevronDown, ChevronUp, RefreshCw, FileText, HelpCircle } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { GlassCard, Badge, Btn } from "../components/common/UIElements";
+import { AILoader } from "../components/animations/AILoader";
 import { useSession } from "../context/SessionContext";
 import { pipelineApi } from "../api/pipeline";
 
@@ -122,20 +124,21 @@ export const RecallPage: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto pb-10 space-y-6">
       {/* AI Summary Banner */}
-      <GlassCard className="p-6 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-purple-50/70 border-blue-100">
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+      <GlassCard className="p-6 bg-gradient-to-r from-blue-50/70 dark:from-blue-950/30 via-indigo-50/50 dark:via-indigo-950/20 to-purple-50/70 dark:to-purple-950/20 border-blue-100 dark:border-blue-900/40">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-[#2563EB]" />
-              <span className="text-xs font-semibold text-[#2563EB] uppercase tracking-wider">
+              <Brain className="w-5 h-5 text-primary" />
+              <span className="text-xs font-semibold text-primary uppercase tracking-wider">
                 Resume-Driven Active Recall Guide
               </span>
             </div>
-            <h2 className="text-lg font-bold text-[#111827]">
+            <h2 className="text-lg font-bold text-foreground">
               {targetCompany} Preparation — Active Memory Testing
             </h2>
-            <p className="text-xs text-[#6B7280] leading-relaxed max-w-2xl">
-              These active recall topics are derived directly from the skills listed on your candidate <strong className="text-gray-800">Resume</strong>. Click any topic below to trigger instant AI flashcards and test your recall depth.
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
+              These active recall topics are derived directly from the skills listed on your candidate <strong className="text-foreground">Resume</strong>. Click any topic below to trigger instant AI flashcards and test your recall depth.
             </p>
           </div>
           <Badge color="purple" className="shrink-0 flex items-center gap-1">
@@ -144,43 +147,50 @@ export const RecallPage: React.FC = () => {
           </Badge>
         </div>
       </GlassCard>
+      </motion.div>
 
       {/* Resume Skills Topic Selector */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}>
       <GlassCard className="p-5 space-y-3">
-        <label className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider block">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
           Select Resume Skill / Topic to Test Recall ({resumeSkills.length})
         </label>
         <div className="flex flex-wrap gap-2.5">
-          {resumeSkills.map((skill) => {
+          {resumeSkills.map((skill, i) => {
             const isSelected = selectedTopic.toLowerCase() === skill.toLowerCase();
             return (
-              <button
+              <motion.button
                 key={skill}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.04, duration: 0.3 }}
                 onClick={() => setSelectedTopic(skill)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border chip-hover ${
                   isSelected
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm scale-[1.02]"
-                    : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm chip-active"
+                    : "bg-secondary text-muted-foreground border-border hover:text-foreground"
                 }`}
               >
-                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />}
+                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
                 <span>{skill}</span>
-              </button>
+              </motion.button>
             );
           })}
         </div>
       </GlassCard>
+      </motion.div>
 
       {/* Active Question Cards for Selected Topic */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.4 }}>
       <GlassCard className="p-6 space-y-5">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+        <div className="flex items-center justify-between border-b border-border pb-3">
           <div>
-            <h3 className="font-bold text-[#111827] text-base flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-600" />
-              Active Recall: <span className="text-blue-600">{selectedTopic}</span>
+            <h3 className="font-bold text-foreground text-base flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              Active Recall: <span className="text-primary">{selectedTopic}</span>
             </h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">
-              Practice questions tailored for <span className="font-semibold text-gray-800">{targetCompany}</span> technical interview evaluations
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Practice questions tailored for <span className="font-semibold text-foreground">{targetCompany}</span> technical interview evaluations
             </p>
           </div>
 
@@ -203,14 +213,16 @@ export const RecallPage: React.FC = () => {
         {/* Loading State */}
         {loadingRecall ? (
           <div className="py-12 flex flex-col items-center justify-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 animate-pulse">
+            <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
+              className="w-12 h-12 rounded-2xl bg-accent border border-border flex items-center justify-center text-primary">
               <Bot className="w-6 h-6" />
-            </div>
-            <div className="text-xs font-semibold text-gray-700">Generating Active Recall Items for {selectedTopic}...</div>
-            <div className="text-[11px] text-gray-400">LLM multi-agents tailoring questions to {targetCompany} standards</div>
+            </motion.div>
+            <div className="text-xs font-semibold text-foreground">Generating Active Recall Items for {selectedTopic}...</div>
+            <div className="text-[11px] text-muted-foreground">LLM multi-agents tailoring questions to {targetCompany} standards</div>
+            <AILoader size="md" />
           </div>
         ) : topicQuestions.length === 0 ? (
-          <div className="text-center py-8 text-xs text-gray-500">
+          <div className="text-center py-8 text-xs text-muted-foreground">
             No questions available for this topic. Click "Regenerate Questions" above.
           </div>
         ) : (
@@ -220,20 +232,26 @@ export const RecallPage: React.FC = () => {
               const assessment = userAssessments[idx];
 
               return (
-                <div key={idx} className="p-4 bg-gray-50/70 border border-gray-200/80 rounded-2xl space-y-3 hover:border-blue-200 transition-all">
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.08, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="p-4 bg-secondary border border-border rounded-2xl space-y-3 hover:border-primary/30 transition-colors card-hover"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-2.5 min-w-0">
-                      <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-6 h-6 rounded-lg bg-accent text-primary font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                         Q{idx + 1}
                       </div>
-                      <div className="text-sm font-semibold text-[#111827] leading-snug">
+                      <div className="text-sm font-semibold text-foreground leading-snug">
                         {qObj.question}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
                       {qObj.question_type && (
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-900/50">
                           {qObj.question_type}
                         </span>
                       )}
@@ -248,34 +266,42 @@ export const RecallPage: React.FC = () => {
                     <div>
                       <button
                         onClick={() => toggleAnswer(idx)}
-                        className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer transition-colors"
+                        className="text-xs font-medium text-primary hover:opacity-80 flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <HelpCircle className="w-3.5 h-3.5" />
                         <span>{isExpanded ? "Hide Solution & Answer" : "Show Solution & Answer"}</span>
                         {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </button>
 
-                      {isExpanded && (
-                        <div className="mt-2.5 p-3.5 bg-white border border-blue-100 rounded-xl text-xs text-gray-700 leading-relaxed space-y-1 shadow-sm">
-                          <span className="font-semibold text-blue-900 block text-[11px] uppercase tracking-wide">
-                            Model Answer & Key Concept:
-                          </span>
-                          <p>{qObj.answer}</p>
-                        </div>
-                      )}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                            className="mt-2.5 p-3.5 bg-card border border-primary/20 rounded-xl text-xs text-foreground leading-relaxed space-y-1 shadow-sm overflow-hidden"
+                          >
+                            <span className="font-semibold text-primary block text-[11px] uppercase tracking-wide">
+                              Model Answer & Key Concept:
+                            </span>
+                            <p className="text-muted-foreground">{qObj.answer}</p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   )}
 
                   {/* Self Assessment Controls */}
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-200/60 text-xs">
-                    <span className="text-[11px] text-gray-400">Self Assessment:</span>
+                  <div className="flex items-center justify-between pt-2 border-t border-border text-xs">
+                    <span className="text-[11px] text-muted-foreground">Self Assessment:</span>
                     <div className="flex gap-1.5">
                       <button
                         onClick={() => markAssessment(idx, "mastered")}
                         className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border cursor-pointer transition-all ${
                           assessment === "mastered"
-                            ? "bg-green-100 text-green-800 border-green-300 font-bold"
-                            : "bg-white text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700"
+                            ? "bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-300 border-green-300 dark:border-green-800 font-bold"
+                            : "bg-card text-muted-foreground border-border hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-700"
                         }`}
                       >
                         Mastered
@@ -284,8 +310,8 @@ export const RecallPage: React.FC = () => {
                         onClick={() => markAssessment(idx, "review")}
                         className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border cursor-pointer transition-all ${
                           assessment === "review"
-                            ? "bg-amber-100 text-amber-800 border-amber-300 font-bold"
-                            : "bg-white text-gray-500 border-gray-200 hover:bg-amber-50 hover:text-amber-700"
+                            ? "bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800 font-bold"
+                            : "bg-card text-muted-foreground border-border hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:text-amber-700"
                         }`}
                       >
                         Needs Review
@@ -294,20 +320,21 @@ export const RecallPage: React.FC = () => {
                         onClick={() => markAssessment(idx, "weak")}
                         className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border cursor-pointer transition-all ${
                           assessment === "weak"
-                            ? "bg-red-100 text-red-800 border-red-300 font-bold"
-                            : "bg-white text-gray-500 border-gray-200 hover:bg-red-50 hover:text-red-700"
+                            ? "bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-300 dark:border-red-800 font-bold"
+                            : "bg-card text-muted-foreground border-border hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-700"
                         }`}
                       >
                         Weak Concept
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
         )}
       </GlassCard>
+      </motion.div>
     </div>
   );
 };

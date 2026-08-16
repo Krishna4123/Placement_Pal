@@ -3,6 +3,7 @@ import {
   BarChart2, BookOpen, Check, Sparkles, Clock, ExternalLink,
   ChevronDown, ChevronUp, Loader2, AlertCircle
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { GlassCard, Badge, Btn, ProgressBar } from "../components/common/UIElements";
 import { useSession } from "../context/SessionContext";
 import { pipelineApi } from "../api/pipeline";
@@ -10,14 +11,14 @@ import { planApi, ResourceLink } from "../api/plan";
 
 // ── Source icon colours ───────────────────────────────────────────────────
 const SOURCE_COLORS: Record<string, string> = {
-  LeetCode:      "bg-orange-100 text-orange-700 border-orange-200",
-  GeeksforGeeks: "bg-green-100 text-green-700 border-green-200",
-  HackerRank:    "bg-emerald-100 text-emerald-700 border-emerald-200",
-  Codeforces:    "bg-blue-100 text-blue-700 border-blue-200",
-  IndiaBix:      "bg-violet-100 text-violet-700 border-violet-200",
-  PrepInsta:     "bg-pink-100 text-pink-700 border-pink-200",
-  TutorialsPoint:"bg-red-100 text-red-700 border-red-200",
-  JavatPoint:    "bg-yellow-100 text-yellow-700 border-yellow-200",
+  LeetCode:      "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800/50",
+  GeeksforGeeks: "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800/50",
+  HackerRank:    "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
+  Codeforces:    "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
+  IndiaBix:      "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/50",
+  PrepInsta:     "bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800/50",
+  TutorialsPoint:"bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/50",
+  JavatPoint:    "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800/50",
 };
 
 // ── Resource Panel for a single task ─────────────────────────────────────
@@ -54,7 +55,7 @@ const ResourcePanel: React.FC<ResourcePanelProps> = ({ taskId, taskTitle, taskTy
     <div className="mt-2">
       <button
         onClick={handleToggle}
-        className="flex items-center gap-1.5 text-xs font-medium text-[#2563EB] hover:text-[#1D4ED8] transition-colors group"
+        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity group"
         id={`resource-btn-${taskId}`}
       >
         <ExternalLink className="w-3 h-3" />
@@ -66,45 +67,53 @@ const ResourcePanel: React.FC<ResourcePanelProps> = ({ taskId, taskTitle, taskTy
         )}
       </button>
 
+      <AnimatePresence>
       {open && (
-        <div className="mt-2 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-3 space-y-2 animate-fade-in">
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+          className="mt-2 rounded-xl border border-border bg-secondary p-3 space-y-2 overflow-hidden"
+        >
           {loading && (
-            <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               Searching for resources…
             </div>
           )}
           {error && (
-            <div className="flex items-center gap-2 text-xs text-red-500">
+            <div className="flex items-center gap-2 text-xs text-destructive">
               <AlertCircle className="w-3.5 h-3.5" />
               {error}
             </div>
           )}
           {!loading && links && links.length === 0 && !error && (
-            <p className="text-xs text-[#9CA3AF]">No resources found.</p>
+            <p className="text-xs text-muted-foreground">No resources found.</p>
           )}
           {!loading && links && links.map((link, i) => {
-            const colorClass = SOURCE_COLORS[link.source] || "bg-gray-100 text-gray-600 border-gray-200";
+            const colorClass = SOURCE_COLORS[link.source] || "bg-secondary text-muted-foreground border-border";
             return (
               <a
                 key={i}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2.5 p-2 rounded-lg bg-white border border-[#E5E7EB] hover:border-[#2563EB] hover:shadow-sm transition-all group/link"
+                className="flex items-center gap-2.5 p-2 rounded-lg bg-card border border-border hover:border-primary hover:shadow-sm transition-all group/link"
               >
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${colorClass} shrink-0`}>
                   {link.source}
                 </span>
-                <span className="text-xs text-[#374151] group-hover/link:text-[#2563EB] truncate flex-1">
+                <span className="text-xs text-foreground group-hover/link:text-primary truncate flex-1">
                   {link.title}
                 </span>
-                <ExternalLink className="w-3 h-3 text-[#9CA3AF] group-hover/link:text-[#2563EB] shrink-0" />
+                <ExternalLink className="w-3 h-3 text-muted-foreground group-hover/link:text-primary shrink-0" />
               </a>
             );
           })}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 };

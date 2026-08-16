@@ -3,6 +3,7 @@ import {
   FileText, Hash, Folder, Sparkles, Search, RefreshCw, Send, Bot,
   Upload, Eye, X, Plus
 } from "lucide-react";
+import { motion } from "motion/react";
 import { GlassCard, Badge, Btn } from "../components/common/UIElements";
 import { vaultApi } from "../api/vault";
 
@@ -224,18 +225,18 @@ export const VaultPage: React.FC = () => {
 
       {/* AI Search */}
       <GlassCard className="p-5">
-        <h3 className="font-semibold text-[#111827] mb-3 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#2563EB]" /> Ask Your Vault
+        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" /> Ask Your Vault
         </h3>
         <div className="flex gap-2 mb-3">
-          <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5">
-            <Search className="w-4 h-4 text-gray-400 shrink-0" />
+          <div className="flex-1 flex items-center gap-2 bg-secondary border border-border rounded-xl px-3.5 py-2.5">
+            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Ask anything from your uploaded study materials & topics..."
-              className="bg-transparent text-sm text-[#374151] outline-none flex-1 placeholder:text-gray-400 min-w-0"
+              className="bg-transparent text-sm text-foreground outline-none flex-1 placeholder:text-muted-foreground min-w-0"
             />
           </div>
           <Btn variant="gradient" onClick={handleSearch} disabled={searching}>
@@ -243,15 +244,15 @@ export const VaultPage: React.FC = () => {
           </Btn>
         </div>
         {searchResult && (
-          <div className="bg-gradient-to-br from-blue-50 to-purple-50/60 border border-blue-100 rounded-xl p-4">
+          <div className="bg-gradient-to-br from-blue-50/60 dark:from-blue-950/30 to-purple-50/40 dark:to-purple-950/20 border border-primary/20 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Bot className="w-4 h-4 text-[#2563EB]" />
-              <span className="text-xs font-semibold text-[#2563EB]">Vault AI Semantic Answer</span>
+              <Bot className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold text-primary">Vault AI Semantic Answer</span>
             </div>
-            <p className="text-sm text-[#374151] leading-relaxed whitespace-pre-line">{searchResult.text}</p>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{searchResult.text}</p>
             {searchResult.sources.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-blue-100">
-                <span className="text-xs text-[#9CA3AF]">Sources:</span>
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-border">
+                <span className="text-xs text-muted-foreground">Sources:</span>
                 {searchResult.sources.map((src, idx) => (
                   <Badge key={idx} color={idx % 2 === 0 ? "blue" : "purple"}>
                     {src}

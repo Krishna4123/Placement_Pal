@@ -1,5 +1,12 @@
 @custom-variant dark (&:is(.dark *));
 
+/* ── Theme Transition ────────────────────────────────────── */
+html {
+  /* Smooth transition when switching themes */
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* ── Light Theme (Default) ───────────────────────────────── */
 :root {
   --font-size: 16px;
   --background: #F8FAFC;
@@ -19,6 +26,7 @@
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
   --border: rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.12);
   --input: transparent;
   --input-background: #F8FAFC;
   --switch-background: #D1D5DB;
@@ -35,47 +43,72 @@
   --sidebar-foreground: #111827;
   --sidebar-primary: #2563EB;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F1F5F9;
-  --sidebar-accent-foreground: #374151;
+  --sidebar-accent: #EEF2FF;
+  --sidebar-accent-foreground: #2563EB;
   --sidebar-border: rgba(0, 0, 0, 0.06);
   --sidebar-ring: #2563EB;
+
+  /* Surface elevations */
+  --surface-1: #FFFFFF;
+  --surface-2: #F8FAFC;
+  --surface-3: #F1F5F9;
+
+  /* Glow */
+  --glow-primary: rgba(37, 99, 235, 0.2);
+  --glow-purple:  rgba(124, 58, 237, 0.15);
 }
 
+/* ── Dark AI Theme ───────────────────────────────────────── */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  color-scheme: dark;
+
+  --background: #080B16;
+  --foreground: #E8EEFF;
+  --card: #101525;
+  --card-foreground: #E8EEFF;
+  --popover: #131927;
+  --popover-foreground: #E8EEFF;
+  --primary: #60A5FA;
+  --primary-foreground: #080B16;
+  --secondary: #151B2D;
+  --secondary-foreground: #CBD5E1;
+  --muted: #151B2D;
+  --muted-foreground: #94A3B8;
+  --accent: #1E2A45;
+  --accent-foreground: #93C5FD;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFF;
+  --border: rgba(99, 102, 241, 0.12);
+  --border-strong: rgba(99, 102, 241, 0.22);
+  --input: rgba(15, 23, 42, 0.8);
+  --input-background: #0F172A;
+  --switch-background: #334155;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --ring: #60A5FA;
+  --chart-1: #60A5FA;
+  --chart-2: #34D399;
+  --chart-3: #FBBF24;
+  --chart-4: #A78BFA;
+  --chart-5: #F87171;
+  --radius: 1rem;
+  --sidebar: #0D1220;
+  --sidebar-foreground: #CBD5E1;
+  --sidebar-primary: #60A5FA;
+  --sidebar-primary-foreground: #080B16;
+  --sidebar-accent: #1E2A45;
+  --sidebar-accent-foreground: #93C5FD;
+  --sidebar-border: rgba(99, 102, 241, 0.1);
+  --sidebar-ring: #60A5FA;
+
+  /* Surface elevations */
+  --surface-1: #101525;
+  --surface-2: #151B2D;
+  --surface-3: #1E2A45;
+
+  /* Glow */
+  --glow-primary: rgba(96, 165, 250, 0.25);
+  --glow-purple:  rgba(167, 139, 250, 0.2);
 }
 
 @theme inline {
@@ -122,6 +155,17 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Smooth theme transitions for all elements */
+    transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, box-shadow 300ms ease;
+  }
+
+  /* Don't transition layout-affecting properties */
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+    transition-timing-function: ease;
+    transition-duration: 300ms;
   }
 
   body {
@@ -173,14 +217,4 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
-}
-
-/* ── Resource panel fade-in ────────────────────────────────── */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.18s ease-out both;
 }

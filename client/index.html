@@ -6,6 +6,15 @@
     <title>PlacementPal AI — Campus Placement Prep</title>
     <meta name="description" content="An AI-driven platform that customizes interview preparation for engineering students by transforming placement notifications into tailored study plans." />
     <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
+    <!-- Anti-flash: apply saved theme before React mounts -->
+    <script>
+      try {
+        var t = localStorage.getItem('placementpal-theme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch(e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
