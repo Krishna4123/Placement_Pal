@@ -314,23 +314,11 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
           localStorage.setItem(`placementpal_parsed_${activeId}`, JSON.stringify(pn));
         }
 
-        const comp = pn?.company || stateData.target_companies?.[0] || profile.targetCompany;
-        const role = pn?.target_role || stateData.target_roles?.[0] || profile.targetRole;
-        const rawDate = pn?.interview_date || stateData.interpreted_intent?.interview_date;
-        let days: number | undefined = pn?.preparation_duration_days || stateData.interpreted_intent?.preparation_duration_days;
-
-        if (rawDate) {
-          const parsed = new Date(rawDate);
-          if (!isNaN(parsed.getTime())) {
-            const diff = Math.ceil((parsed.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-            days = diff > 0 ? diff : 1;
-          }
-        }
         setProfile((prev) => ({
           ...prev,
           targetCompany: comp || prev.targetCompany,
           targetRole: role || prev.targetRole,
-          daysRemaining: days !== undefined ? days : prev.daysRemaining,
+          daysRemaining: daysRemaining,
         }));
       }
 
