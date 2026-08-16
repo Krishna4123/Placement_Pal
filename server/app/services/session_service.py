@@ -44,13 +44,25 @@ class SessionService:
         return state
 
     async def get_session(self, session_id: str) -> Optional[PlacementState]:
-        """Retrieve a session by ID."""
+        """Retrieve a session by ID with real-time calendar day auto-advance."""
         col = get_sessions_collection()
         doc = await col.find_one({"session_id": session_id})
         if not doc:
             return None
         doc.pop("_id", None)
-        return PlacementState(**doc)
+        state = PlacementState(**doc)
+
+        # Dynamic real-time calendar day calculation
+        if state.created_at:
+            try:
+                created_date = state.created_at.date() if isinstance(state.created_at, datetime) else datetime.fromisoformat(str(state.created_at)).date()
+                today_date = datetime.utcnow().date()
+                elapsed_days = max(0, (today_date - created_date).days)
+                state.current_day = min(state.preparation_duration_days, elapsed_days + 1)
+            except Exception as d_err:
+                logger.warning("[SessionService] Failed to calculate real-time current_day: %s", d_err)
+
+        return state
 
     async def update_session(
         self, session_id: str, updates: dict[str, Any]

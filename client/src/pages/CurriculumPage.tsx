@@ -142,7 +142,8 @@ export const CurriculumPage: React.FC = () => {
   const targetDays =
     placementState?.preparation_duration_days ||
     profile?.daysRemaining ||
-    5;
+    19;
+  const currentDayNum = Math.min(targetDays, Math.max(1, targetDays - profile.daysRemaining + 1));
   const isPlanGenerated = plan.length > 0;
   const needsMoreDays = plan.length < targetDays;
 
@@ -266,9 +267,14 @@ export const CurriculumPage: React.FC = () => {
               return (
                 <div key={dayObj.day}>
                   <div className="flex items-center gap-3 mb-2.5">
-                    <div className="text-xs font-bold text-white bg-[#2563EB] px-3 py-1 rounded-lg">
+                    <div className={`text-xs font-bold px-3 py-1 rounded-lg ${dayObj.day === currentDayNum ? "bg-gradient-to-r from-[#2563EB] to-[#7C3AED] text-white shadow-sm" : "bg-[#2563EB] text-white"}`}>
                       Day {dayObj.day}
                     </div>
+                    {dayObj.day === currentDayNum && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 shadow-2xs">
+                        Current Progress Day
+                      </span>
+                    )}
                     <div className="text-xs text-[#9CA3AF]">{dayObj.date}</div>
                     <div className="flex-1 h-px bg-gray-100" />
                   </div>

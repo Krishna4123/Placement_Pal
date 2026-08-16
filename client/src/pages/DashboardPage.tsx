@@ -22,8 +22,9 @@ export const DashboardPage: React.FC = () => {
   const activeRole = placementState?.target_roles?.[0] || profile.targetRole;
 
   const rawDays = placementState?.curriculum?.days || [];
-  const currentDayNum = placementState?.current_day || 1;
-  const currentDayObj = rawDays.find((d: any) => d.day === currentDayNum) || rawDays[0] || { tasks: [] };
+  const totalDaysCount = rawDays.length || placementState?.preparation_duration_days || profile.daysRemaining || 19;
+  const currentDayNum = Math.min(totalDaysCount, Math.max(1, totalDaysCount - profile.daysRemaining + 1));
+  const currentDayObj = rawDays.find((d: any) => d.day === currentDayNum) || rawDays[currentDayNum - 1] || rawDays[0] || { tasks: [] };
 
   const initialTasks = (currentDayObj.tasks || []).map((t: any, idx: number) => ({
     id: t.task_id || t.id || `dash_${idx}`,
@@ -68,10 +69,19 @@ export const DashboardPage: React.FC = () => {
   const completedHours = (totalCompletedMins / 60).toFixed(1);
   const totalPlannedHours = (totalPlannedMins / 60).toFixed(1);
 
+  // Dynamic daily study chart data (only calculate completed hours up to currentDayNum, future days remain 0)
   const studyChartData = rawDays.length > 0
     ? rawDays.slice(0, 7).map((d: any) => {
-        const dayDoneMins = (d.tasks || []).filter((t: any) => t.status === "done" || t.done).reduce((acc: number, t: any) => acc + (t.estimated_minutes || 30), 0);
-        return { day: `D${d.day}`, h: parseFloat((dayDoneMins / 60).toFixed(1)) || 0 };
+        const isFutureDay = d.day > currentDayNum;
+        const dayDoneMins = isFutureDay
+          ? 0
+          : (d.tasks || [])
+              .filter((t: any) => t.status === "done" || t.done)
+              .reduce((acc: number, t: any) => acc + (t.estimated_minutes || 30), 0);
+        return {
+          day: `Day ${d.day}`,
+          h: parseFloat((dayDoneMins / 60).toFixed(1)) || 0,
+        };
       })
     : [{ day: "D1", h: 0 }, { day: "D2", h: 0 }, { day: "D3", h: 0 }, { day: "D4", h: 0 }, { day: "D5", h: 0 }, { day: "D6", h: 0 }, { day: "D7", h: 0 }];
 
@@ -79,12 +89,24 @@ export const DashboardPage: React.FC = () => {
   const currentHour = new Date().getHours();
   const timeGreeting = currentHour < 12 ? "Good morning" : currentHour < 17 ? "Good afternoon" : "Good evening";
 
-  const stats = [
-    { label: "Current Progress Day", value: currentDayNum, suffix: "", prefix: "Day ", icon: Flame, bg: "bg-amber-50 dark:bg-amber-950/30", ic: "text-amber-500", sub: `🔥 ${rawDays.length || profile.daysRemaining} total days planned`, sc: "text-amber-600 dark:text-amber-400" },
-    { label: "Readiness Score", value: readinessScore, suffix: "%", icon: Target, bg: "bg-blue-50 dark:bg-blue-950/30", ic: "text-blue-600", sub: `${completedTasksCount} of ${totalTasksCount} tasks complete`, sc: "text-blue-600 dark:text-blue-400" },
-    { label: "Today's Tasks", value: todayCompletedCount, suffix: ` / ${todayTotalCount}`, icon: CheckCircle, bg: "bg-green-50 dark:bg-green-950/30", ic: "text-green-600", sub: `${todayTotalCount - todayCompletedCount} pending today`, sc: "text-green-600 dark:text-green-400" },
-    { label: "Hours Completed", value: parseFloat(completedHours), suffix: "h", icon: Clock, bg: "bg-purple-50 dark:bg-purple-950/30", ic: "text-purple-600", sub: `Total plan: ${totalPlannedHours}h`, sc: "text-purple-600 dark:text-purple-400", decimals: 1 },
-  ];
+  // Real-time time remaining for today (hours & minutes left for this day)
+  const [timeLeftToday, setTimeLeftToday] = React.useState<{ hours: number; minutes: number }>({ hours: 0, minutes: 0 });
+
+  React.useEffect(() => {
+    const updateTimeLeft = () => {
+      const now = new Date();
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const diffMs = Math.max(0, endOfDay.getTime() - now.getTime());
+      const totalMins = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(totalMins / 60);
+      const minutes = totalMins % 60;
+      setTimeLeftToday({ hours, minutes });
+    };
+
+    updateTimeLeft();
+    const interval = setInterval(updateTimeLeft, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-8">
@@ -131,7 +153,23 @@ export const DashboardPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" ref={statsRef}>
-        {stats.map(({ label, value, suffix, prefix = "", icon: Icon, bg, ic, sub, sc, decimals = 0 }, i) => (
+        {[
+          {
+            label: "Current Progress Day",
+            num: currentDayNum,
+            prefix: "Day ",
+            suffix: "",
+            icon: Flame,
+            bg: "bg-amber-50 dark:bg-amber-950/30",
+            ic: "text-amber-500",
+            sub: `⏳ ${timeLeftToday.hours}h ${timeLeftToday.minutes}m left for this day`,
+            sc: "text-amber-600 dark:text-amber-400 font-semibold",
+            extraSub: `🔥 ${rawDays.length || profile.daysRemaining} total days planned`
+          },
+          { label: "Readiness Score", num: readinessScore, suffix: "%", icon: Target, bg: "bg-blue-50 dark:bg-blue-950/30", ic: "text-blue-600", sub: `${completedTasksCount} of ${totalTasksCount} tasks complete`, sc: "text-blue-600 dark:text-blue-400" },
+          { label: "Today's Tasks", num: todayCompletedCount, suffix: ` / ${todayTotalCount}`, icon: CheckCircle, bg: "bg-green-50 dark:bg-green-950/30", ic: "text-green-600", sub: `${todayTotalCount - todayCompletedCount} pending today`, sc: "text-green-600 dark:text-green-400" },
+          { label: "Hours Completed", num: parseFloat(completedHours), suffix: "h", icon: Clock, bg: "bg-purple-50 dark:bg-purple-950/30", ic: "text-purple-600", sub: `Total plan: ${totalPlannedHours}h`, sc: "text-purple-600 dark:text-purple-400", decimals: 1 },
+        ].map(({ label, num, suffix = "", prefix = "", icon: Icon, bg, ic, sub, sc, extraSub, decimals = 0 }, i) => (
           <motion.div
             key={label}
             initial={{ opacity: 0, y: 20 }}
@@ -144,10 +182,11 @@ export const DashboardPage: React.FC = () => {
               </div>
               <div className="text-xl font-bold text-foreground">
                 {prefix}
-                <AnimatedCounter target={value} suffix={suffix} decimals={decimals} trigger={statsInView} />
+                <AnimatedCounter target={num} suffix={suffix} decimals={decimals} trigger={statsInView} />
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
               <div className={`text-xs mt-1.5 font-medium ${sc}`}>{sub}</div>
+              {extraSub && <div className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-0.5 font-medium">{extraSub}</div>}
             </GlassCard>
           </motion.div>
         ))}

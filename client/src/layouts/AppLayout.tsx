@@ -52,9 +52,11 @@ const sidebarItemVariants = {
 export const AppLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile, clearSession } = useSession();
+  const { profile, placementState, clearSession } = useSession();
   const { logout } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
+
+  const activeCompany = placementState?.target_companies?.[0] || profile.targetCompany;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -86,9 +88,9 @@ export const AppLayout: React.FC = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:relative inset-y-0 left-0 z-30 w-64 flex-shrink-0 transition-transform duration-300 ${
+        className={`fixed md:static inset-y-0 left-0 w-64 bg-card border-r border-border z-50 transition-transform duration-200 flex flex-col ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        } shadow-xl md:shadow-none border-r border-border bg-card flex flex-col h-full`}
+        } shadow-xl md:shadow-none h-full`}
       >
         {/* Brand header */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-border shrink-0">
@@ -164,7 +166,7 @@ export const AppLayout: React.FC = () => {
         <div className="p-3 border-t border-border shrink-0">
           <div className="bg-gradient-to-r from-accent to-accent/50 border border-border rounded-xl p-3 mb-3">
             <div className="text-xs font-semibold text-foreground mb-0.5">Interview in {profile.daysRemaining} days</div>
-            <div className="text-[11px] text-muted-foreground mb-2">{profile.targetCompany} · Stay on track!</div>
+            <div className="text-[11px] text-muted-foreground mb-2">{activeCompany} · Stay on track!</div>
             <ProgressBar value={55} color="var(--primary)" />
           </div>
           <button
@@ -208,7 +210,7 @@ export const AppLayout: React.FC = () => {
             title="Click to view or switch target companies"
           >
             <Building2 className="w-4 h-4 text-primary shrink-0" />
-            <span className="text-xs font-bold text-foreground">{profile.targetCompany}</span>
+            <span className="text-xs font-bold text-foreground">{activeCompany}</span>
             <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-semibold">{profile.daysRemaining}d prep</span>
           </motion.div>
 

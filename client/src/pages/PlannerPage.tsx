@@ -42,17 +42,20 @@ export const PlannerPage: React.FC = () => {
 
   const activeCompany = placementState?.target_companies?.[0] || profile.targetCompany;
 
-  // Session start date (normalized to 00:00:00 local time)
-  const rawStartDateStr = placementState?.start_date || placementState?.created_at;
-  const startDate = parseToLocalMidnight(rawStartDateStr);
-
-  const startDateIsoStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
-
   // Real curriculum task days & total plan duration
   const rawDays = placementState?.curriculum?.days || [];
   const totalPlanDays = rawDays.length > 0 
     ? rawDays.length 
-    : (placementState?.preparation_duration_days || profile.daysRemaining || 14);
+    : (placementState?.preparation_duration_days || profile.daysRemaining || 19);
+
+  // Dynamic start date derived from real-time daysRemaining (e.g. 18 remaining of 19 total => started yesterday)
+  const elapsedDaysFromRemaining = Math.max(0, totalPlanDays - profile.daysRemaining);
+  const computedStartDate = new Date();
+  computedStartDate.setHours(0, 0, 0, 0);
+  computedStartDate.setDate(computedStartDate.getDate() - elapsedDaysFromRemaining);
+
+  const startDate = computedStartDate;
+  const startDateIsoStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
 
   // Plan end date
   const endDate = new Date(startDate);
