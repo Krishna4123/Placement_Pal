@@ -13,7 +13,7 @@ from typing import Any, Optional
 
 import jwt
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
+from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHash
 from bson import ObjectId
 
 from app.config import get_settings
@@ -37,7 +37,7 @@ def verify_password(raw_password: str, password_hash: str) -> bool:
     """Verify *raw_password* against *password_hash*.  Returns True on match."""
     try:
         return _ph.verify(password_hash, raw_password)
-    except (VerifyMismatchError, VerificationError, InvalidHashError):
+    except (VerifyMismatchError, VerificationError, InvalidHash):
         return False
 
 
