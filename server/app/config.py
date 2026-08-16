@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     # ── Embeddings ────────────────────────────────────────────
     embedding_model: str = "text-embedding-3-small"
 
+    # ── Authentication ────────────────────────────────────────
+    jwt_secret: str = "placementpal_jwt_secret_key_2026_super_secure_hash_8f93a"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 1440        # 24 hours
+    google_client_id: str = ""
+
     # ── App ───────────────────────────────────────────────────
     debug: bool = True
     app_title: str = "PlacementPal API"

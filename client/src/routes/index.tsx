@@ -5,6 +5,8 @@ import { AppLayout } from '../layouts/AppLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 
 import { LandingPage } from '../pages/LandingPage';
+import { LoginPage } from '../pages/LoginPage';
+import { SignUpPage } from '../pages/SignUpPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { NewSessionPage } from '../pages/NewSessionPage';
 import { CompanyPage } from '../pages/CompanyPage';
@@ -24,6 +26,10 @@ export const AppRoutes: React.FC = () => {
       <Route element={<LandingLayout />}>
         <Route path="/" element={<LandingPage />} />
       </Route>
+
+      {/* Standalone Auth Routes (no navbar/footer) */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
 
       {/* Protected App Routes */}
       <Route element={<ProtectedRoute />}>

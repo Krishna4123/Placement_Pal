@@ -3,11 +3,12 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Building2, BookOpen, Brain, GraduationCap,
   Settings, Search, Bell, MessageSquare, Plus,
-  Calendar, Sparkles, X, Menu, Terminal, FileText
+  Calendar, Sparkles, X, Menu, Terminal, FileText, LogOut
 } from "lucide-react";
 import { ProgressBar } from "../components/common/UIElements";
 import { ChatPanel } from "../components/chat/ChatPanel";
 import { useSession } from "../context/SessionContext";
+import { useAuth } from "../context/AuthContext";
 
 const navItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -38,7 +39,8 @@ const routeTitles: Record<string, string> = {
 export const AppLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile } = useSession();
+  const { profile, clearSession } = useSession();
+  const { logout } = useAuth();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -134,6 +136,17 @@ export const AppLayout: React.FC = () => {
               <div className="text-xs font-semibold text-[#111827] truncate">{profile.name}</div>
               <div className="text-[11px] text-[#6B7280] truncate">{profile.department} · {profile.college}</div>
             </div>
+          </button>
+          <button
+            onClick={() => {
+              logout();
+              clearSession();
+              navigate("/login");
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 mt-1 rounded-xl text-sm font-medium text-[#EF4444] hover:bg-red-50 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
           </button>
         </div>
       </aside>
