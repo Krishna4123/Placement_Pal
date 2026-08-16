@@ -16,7 +16,6 @@ import { RecallPage } from '../pages/RecallPage';
 import { CurriculumPage } from '../pages/CurriculumPage';
 import { PlannerPage } from '../pages/PlannerPage';
 import { SettingsPage } from '../pages/SettingsPage';
-import { DebugPage } from '../pages/DebugPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const AppRoutes: React.FC = () => {
@@ -43,7 +42,6 @@ export const AppRoutes: React.FC = () => {
           <Route path="/curriculum" element={<CurriculumPage />} />
           <Route path="/planner" element={<PlannerPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/debug" element={<DebugPage />} />
         </Route>
       </Route>
 

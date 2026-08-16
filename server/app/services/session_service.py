@@ -87,3 +87,16 @@ class SessionService:
         col = get_sessions_collection()
         result = await col.delete_one({"session_id": session_id})
         return result.deleted_count > 0
+
+    async def list_sessions(self) -> list[PlacementState]:
+        """List all placement sessions ordered by updated_at descending."""
+        col = get_sessions_collection()
+        cursor = col.find({}).sort("updated_at", -1)
+        sessions: list[PlacementState] = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            try:
+                sessions.append(PlacementState(**doc))
+            except Exception as e:
+                logger.warning("Failed to parse session document: %s", e)
+        return sessions

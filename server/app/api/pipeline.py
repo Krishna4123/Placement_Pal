@@ -176,3 +176,48 @@ async def generate_recall_for_topic(body: RecallTopicRequest):
             data={"topic": body.topic, "questions": fallback_qs},
         )
 
+
+@router.get(
+    "/sessions",
+    summary="List all active company placement sessions",
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_sessions():
+    """
+    Returns all placement sessions stored in MongoDB.
+    """
+    sessions = await session_service.list_sessions()
+    session_list = []
+    for s in sessions:
+        session_list.append({
+            "session_id": s.session_id,
+            "target_companies": s.target_companies,
+            "target_roles": s.target_roles,
+            "phase": s.phase.value if hasattr(s.phase, "value") else str(s.phase),
+            "parsed_notification": s.parsed_notification,
+            "start_date": s.start_date,
+            "updated_at": s.updated_at.isoformat() if hasattr(s.updated_at, "isoformat") else str(s.updated_at),
+        })
+    return APIResponse[list](
+        success=True,
+        message="Retrieved all placement sessions",
+        data=session_list,
+    )
+
+
+@router.delete(
+    "/session",
+    summary="Delete a placement session by ID",
+    status_code=status.HTTP_200_OK,
+)
+async def delete_placement_session(session_id: str):
+    """
+    Deletes a session document from MongoDB by session_id.
+    """
+    success = await session_service.delete_session(session_id)
+    return APIResponse[dict](
+        success=success,
+        message=f"Session {session_id} deleted" if success else "Session not found",
+        data={"session_id": session_id, "deleted": success},
+    )
+

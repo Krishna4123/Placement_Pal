@@ -20,20 +20,18 @@ const navItems = [
   { path: "/curriculum", icon: GraduationCap, label: "Curriculum" },
   { path: "/planner", icon: Calendar, label: "Daily Planner" },
   { path: "/settings", icon: Settings, label: "Settings" },
-  { path: "/debug", icon: Terminal, label: "Node Debugger" },
 ];
 
 const routeTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/new-session": "New Session",
-  "/company": "Company Intelligence",
+  "/company": "Company Intelligence & Sessions",
   "/vault": "Knowledge Vault",
   "/resume": "Resume & Portfolio Hub",
   "/recall": "Recall Guide",
   "/curriculum": "Curriculum",
   "/planner": "Daily Planner",
   "/settings": "Settings",
-  "/debug": "Node Debugger Sandbox",
 };
 
 export const AppLayout: React.FC = () => {
@@ -161,19 +159,16 @@ export const AppLayout: React.FC = () => {
           <h2 className="text-base font-semibold text-[#111827]">{currentTitle}</h2>
           <div className="flex-1" />
           
-          <div className="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 w-56">
-            <Search className="w-4 h-4 text-gray-400 shrink-0" />
-            <input
-              placeholder="Search topics..."
-              className="bg-transparent text-sm text-[#374151] outline-none flex-1 placeholder:text-gray-400 min-w-0"
-            />
-            <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200 px-1.5 py-0.5 rounded-md">⌘K</kbd>
+          {/* Target Company Indicator Pill */}
+          <div
+            onClick={() => navigate("/company")}
+            className="hidden sm:flex items-center gap-2 bg-blue-50/80 border border-blue-100 rounded-xl px-3 py-1.5 cursor-pointer hover:bg-blue-100/60 transition-colors"
+            title="Click to view or switch target companies"
+          >
+            <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <span className="text-xs font-bold text-blue-900">{profile.targetCompany}</span>
+            <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-semibold">{profile.daysRemaining}d prep</span>
           </div>
-
-          <button className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors" title="Notifications">
-            <Bell className="w-5 h-5 text-[#6B7280]" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#EF4444] rounded-full border-2 border-white" />
-          </button>
 
           <button onClick={() => setChatOpen(true)} className="p-2 rounded-xl hover:bg-blue-50 transition-colors" title="Open AI Assistant">
             <MessageSquare className="w-5 h-5 text-[#2563EB]" />

@@ -15,17 +15,30 @@ export interface UserProfile {
   daysRemaining: number;
 }
 
+export interface CompanySessionItem {
+  sessionId: string;
+  companyName: string;
+  targetRole: string;
+  daysRemaining: number;
+  updatedAt?: string;
+  parsedNotification?: ParsedNotification | null;
+}
+
 interface SessionContextType {
   sessionId: string;
   hasActiveSession: boolean;
+  sessions: CompanySessionItem[];
   profile: UserProfile;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
   placementState: PlacementState | null;
   parsedNotification: ParsedNotification | null;
   resumeData: any | null;
   loadingState: boolean;
+  switchSession: (targetSessionId: string) => Promise<void>;
+  deleteCompanySession: (targetSessionId: string) => Promise<void>;
   refreshState: (overrideSessionId?: string) => Promise<void>;
   refreshResume: (overrideSessionId?: string) => Promise<void>;
+  refreshSessionsList: () => Promise<void>;
   applyParsedNotification: (data: ParsedNotification, company?: string) => void;
   startNewSession: (newCompany?: string) => string;
   clearSession: () => void;
@@ -47,16 +60,23 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user: authUser, logout: authLogout } = useAuth();
-  const [sessionId, setSessionId] = useState<string>("active_session");
+  
+  const [sessionId, setSessionId] = useState<string>(() => {
+    return localStorage.getItem('placementpal_active_session_id') || "active_session";
+  });
+
+  const [sessions, setSessions] = useState<CompanySessionItem[]>(() => {
+    const saved = localStorage.getItem('placementpal_sessions_list');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(() => {
-    return localStorage.getItem('placementpal_active_session') === 'true';
+    return localStorage.getItem('placementpal_active_session') === 'true' || Boolean(localStorage.getItem('placementpal_active_session_id'));
   });
 
   const [profile, setProfile] = useState<UserProfile>(() => {
     const saved = localStorage.getItem('placementpal_profile');
     if (saved) return JSON.parse(saved);
-    // Use authenticated user info if available
     return {
       ...defaultProfile,
       name: authUser?.name || defaultProfile.name,
@@ -66,14 +86,80 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [placementState, setPlacementState] = useState<PlacementState | null>(null);
   const [parsedNotification, setParsedNotification] = useState<ParsedNotification | null>(() => {
-    const saved = localStorage.getItem('placementpal_parsed_notification');
-    return saved ? JSON.parse(saved) : null;
+    const saved = localStorage.getItem(`placementpal_parsed_${sessionId}`);
+    if (saved) return JSON.parse(saved);
+    const fallback = localStorage.getItem('placementpal_parsed_notification');
+    return fallback ? JSON.parse(fallback) : null;
   });
+  
   const [resumeData, setResumeData] = useState<any | null>(() => {
     const saved = localStorage.getItem('placementpal_user_resume');
     return saved ? JSON.parse(saved) : null;
   });
   const [loadingState, setLoadingState] = useState<boolean>(false);
+
+  const refreshSessionsList = async () => {
+    try {
+      const res = await stateApi.getAllSessions();
+      if (res && res.data && Array.isArray(res.data)) {
+        const fetchedSessions: CompanySessionItem[] = res.data.map((s: any) => {
+          const company = s.parsed_notification?.company || s.target_companies?.[0] || 'Target Company';
+          const role = s.parsed_notification?.target_role || s.target_roles?.[0] || 'Software Engineer';
+          const days = s.parsed_notification?.preparation_duration_days || 14;
+          return {
+            sessionId: s.session_id,
+            companyName: company,
+            targetRole: role,
+            daysRemaining: days,
+            updatedAt: s.updated_at,
+            parsedNotification: s.parsed_notification || null,
+          };
+        });
+        setSessions(fetchedSessions);
+        localStorage.setItem('placementpal_sessions_list', JSON.stringify(fetchedSessions));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch sessions list from server:', err);
+    }
+  };
+
+  const switchSession = async (targetSessionId: string) => {
+    if (!targetSessionId || targetSessionId === sessionId) return;
+    setSessionId(targetSessionId);
+    localStorage.setItem('placementpal_active_session_id', targetSessionId);
+    localStorage.setItem('placementpal_active_session', 'true');
+    setHasActiveSession(true);
+    
+    // Load local parsed notification cache for target session if available
+    const savedParsed = localStorage.getItem(`placementpal_parsed_${targetSessionId}`);
+    if (savedParsed) {
+      setParsedNotification(JSON.parse(savedParsed));
+    }
+
+    await refreshState(targetSessionId);
+  };
+
+  const deleteCompanySession = async (targetSessionId: string) => {
+    try {
+      await stateApi.deleteSession(targetSessionId);
+    } catch (err) {
+      console.warn('Failed to delete session on server:', err);
+    }
+    
+    localStorage.removeItem(`placementpal_parsed_${targetSessionId}`);
+    const remaining = sessions.filter((s) => s.sessionId !== targetSessionId);
+    setSessions(remaining);
+    localStorage.setItem('placementpal_sessions_list', JSON.stringify(remaining));
+
+    if (sessionId === targetSessionId) {
+      if (remaining.length > 0) {
+        await switchSession(remaining[0].sessionId);
+      } else {
+        setPlacementState(null);
+        setParsedNotification(null);
+      }
+    }
+  };
 
   const refreshResume = async (overrideSessionId?: string) => {
     try {
@@ -92,6 +178,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const applyParsedNotification = (data: ParsedNotification, company?: string) => {
     setParsedNotification(data);
     localStorage.setItem('placementpal_parsed_notification', JSON.stringify(data));
+    localStorage.setItem(`placementpal_parsed_${sessionId}`, JSON.stringify(data));
     
     let days = data.preparation_duration_days;
     if (data.interview_date) {
@@ -102,28 +189,58 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     }
 
+    const companyName = company || data.company || profile.targetCompany;
+
     setProfile((prev) => ({
       ...prev,
-      targetCompany: company || data.company || prev.targetCompany,
+      targetCompany: companyName,
       targetRole: data.target_role || prev.targetRole,
       daysRemaining: days,
     }));
+
+    // Update or append in sessions list
+    setSessions((prev) => {
+      const exists = prev.some((s) => s.sessionId === sessionId);
+      const newItem: CompanySessionItem = {
+        sessionId,
+        companyName,
+        targetRole: data.target_role || profile.targetRole,
+        daysRemaining: days,
+        updatedAt: new Date().toISOString(),
+        parsedNotification: data,
+      };
+      if (exists) {
+        return prev.map((s) => (s.sessionId === sessionId ? newItem : s));
+      }
+      return [newItem, ...prev];
+    });
+
+    refreshSessionsList();
   };
 
   const startNewSession = (newCompany?: string) => {
-    const newId = 'active_session';
+    const slug = newCompany ? newCompany.toLowerCase().replace(/[^a-z0-9]/g, '') : 'company';
+    const newId = `session_${slug}_${Date.now()}`;
+    
+    localStorage.setItem('placementpal_active_session_id', newId);
     localStorage.setItem('placementpal_session_id', newId);
     localStorage.setItem('placementpal_active_session', 'true');
+    
     setSessionId(newId);
     setHasActiveSession(true);
+    setPlacementState(null);
+    setParsedNotification(null);
+
     if (newCompany) {
       setProfile((prev) => ({ ...prev, targetCompany: newCompany }));
     }
+
     return newId;
   };
 
   const clearSession = () => {
     localStorage.removeItem('placementpal_active_session');
+    localStorage.removeItem('placementpal_active_session_id');
     localStorage.removeItem('placementpal_parsed_notification');
     localStorage.removeItem('placementpal_user_resume');
     setHasActiveSession(false);
@@ -143,16 +260,16 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const stateData = res.data;
         setPlacementState(stateData);
 
-        if (!parsedNotification && stateData.parsed_notification) {
-          const pn = stateData.parsed_notification as any;
+        const pn = (stateData.parsed_notification as any) || parsedNotification;
+        if (pn) {
           setParsedNotification(pn);
-          localStorage.setItem('placementpal_parsed_notification', JSON.stringify(pn));
+          localStorage.setItem(`placementpal_parsed_${activeId}`, JSON.stringify(pn));
         }
 
-        const comp = stateData.target_companies?.[0] || profile.targetCompany;
-        const role = stateData.target_roles?.[0] || profile.targetRole;
-        const rawDate = stateData.interpreted_intent?.interview_date;
-        let days: number | undefined = stateData.interpreted_intent?.preparation_duration_days;
+        const comp = pn?.company || stateData.target_companies?.[0] || profile.targetCompany;
+        const role = pn?.target_role || stateData.target_roles?.[0] || profile.targetRole;
+        const rawDate = pn?.interview_date || stateData.interpreted_intent?.interview_date;
+        let days: number | undefined = pn?.preparation_duration_days || stateData.interpreted_intent?.preparation_duration_days;
 
         if (rawDate) {
           const parsed = new Date(rawDate);
@@ -182,7 +299,6 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem('placementpal_profile', JSON.stringify(profile));
   }, [profile]);
 
-  // Sync profile name/email when auth user changes
   useEffect(() => {
     if (authUser) {
       setProfile((prev) => ({
@@ -192,6 +308,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }));
     }
   }, [authUser]);
+
+  useEffect(() => {
+    refreshSessionsList();
+  }, []);
 
   useEffect(() => {
     if (hasActiveSession && sessionId) {
@@ -204,14 +324,18 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       value={{
         sessionId,
         hasActiveSession,
+        sessions,
         profile,
         setProfile,
         placementState,
         parsedNotification,
         resumeData,
         loadingState,
+        switchSession,
+        deleteCompanySession,
         refreshState,
         refreshResume,
+        refreshSessionsList,
         applyParsedNotification,
         startNewSession,
         clearSession,

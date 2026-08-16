@@ -48,4 +48,14 @@ export const stateApi = {
     });
     return res.data;
   },
+  getAllSessions: async () => {
+    const res = await apiClient.get<{ success: boolean; data: any[] }>(`/pipeline/sessions`);
+    return res.data;
+  },
+  deleteSession: async (sessionId: string) => {
+    const res = await apiClient.delete<{ success: boolean; data: any }>(`/pipeline/session`, {
+      params: { session_id: sessionId },
+    });
+    return res.data;
+  },
 };

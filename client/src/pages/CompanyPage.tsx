@@ -1,12 +1,14 @@
 import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Clock, Globe, Code, Sparkles, BookOpen, MessageSquare, Layers, Calendar, CheckCircle2
+  Clock, Globe, Code, Sparkles, BookOpen, MessageSquare, Layers, Calendar, CheckCircle2, Plus, Building2, ArrowRight, Trash2
 } from "lucide-react";
 import { GlassCard, Badge } from "../components/common/UIElements";
 import { useSession } from "../context/SessionContext";
 
 export const CompanyPage: React.FC = () => {
-  const { profile, placementState, parsedNotification } = useSession();
+  const navigate = useNavigate();
+  const { profile, placementState, parsedNotification, sessionId, sessions, switchSession, deleteCompanySession } = useSession();
 
   // ── Data sources: parsedNotification (fast, always available) comes first ──
   // parsedNotification is populated instantly by the regex parser on session start
@@ -72,17 +74,109 @@ export const CompanyPage: React.FC = () => {
     : effectiveParsed?.tech_stack || [];
   const overview = intelObj.overview || intelObj.summary || null;
   const commonTopics: string[] = intelObj.common_topics || [];
-  const pastExperiences: string[] = intelObj.past_interview_experiences || [];
   const tips: string[] = intelObj.tips || [];
 
   const llmReady = Boolean(placementState?.company_intel);
-
-  // Show deadline if no interview date was found
   const deadlineDate = effectiveParsed?.deadline_date || null;
 
-
   return (
-    <div className="max-w-6xl mx-auto pb-8 space-y-5">
+    <div className="max-w-6xl mx-auto pb-8 space-y-6">
+      {/* Multi-Company Sessions Navigator */}
+      <GlassCard className="p-6 bg-gradient-to-r from-blue-50/50 via-white to-purple-50/40 border border-blue-100">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-[#111827] flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-blue-600" />
+              Active Target Companies & Sessions
+            </h2>
+            <p className="text-xs text-[#6B7280]">
+              Preparing for multiple companies? Switch active targets below to update all page guides, curriculum, and active recall.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/new-session")}
+            className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-semibold hover:shadow-md transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Prepare for New Company
+          </button>
+        </div>
+
+        {sessions.length > 0 ? (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {sessions.map((s) => {
+              const isActive = s.sessionId === sessionId;
+              return (
+                <div
+                  key={s.sessionId}
+                  onClick={() => switchSession(s.sessionId)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group ${
+                    isActive
+                      ? "bg-white border-blue-500 shadow-md ring-2 ring-blue-500/20"
+                      : "bg-white/80 border-gray-100 hover:border-gray-300 hover:shadow-sm"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                          isActive ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
+                        }`}>
+                          {s.companyName.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-sm text-[#111827] leading-tight truncate">{s.companyName}</div>
+                          <div className="text-[11px] text-[#6B7280] leading-tight truncate">{s.targetRole}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isActive && (
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md border border-blue-100">
+                            Active
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Delete placement session for ${s.companyName}?`)) {
+                              deleteCompanySession(s.sessionId);
+                            }
+                          }}
+                          className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete Company Session"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-100 text-xs">
+                    <span className="text-[#6B7280] font-medium">{s.daysRemaining} days prep</span>
+                    <button
+                      className={`text-xs font-semibold flex items-center gap-1 ${
+                        isActive ? "text-blue-600" : "text-gray-500 hover:text-blue-600"
+                      }`}
+                    >
+                      {isActive ? "Viewing" : "Switch Target"} <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-4 bg-white/70 rounded-xl text-xs text-gray-500 flex items-center justify-between">
+            <span>Currently active target: <strong className="text-gray-800">{activeCompany}</strong> ({targetRole})</span>
+            <button
+              onClick={() => navigate("/new-session")}
+              className="text-blue-600 font-semibold hover:underline cursor-pointer"
+            >
+              + Add another company
+            </button>
+          </div>
+        )}
+      </GlassCard>
       {/* Header Card */}
       <GlassCard className="p-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
