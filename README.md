@@ -1,3 +1,62 @@
+# PlacementPal
+
+PlacementPal is an AI-powered placement preparation platform that combines a React/Vite frontend with a FastAPI backend to produce personalized study plans, company-specific intelligence, and active-recall practice using LangGraph, CrewAI, LangChain, and ChromaDB.
+
+This README documents how to run the project locally, the high-level architecture, and the most important development notes.
+
+
+## Architecture (high level)
+
+Mermaid diagram (pipeline view):
+
+```mermaid
+flowchart TD
+  A[Student Message] --> B(Phase 1: interpret_message)
+  B --> C{Parallel}
+  C --> D[company_intel (web search)]
+  C --> E[knowledge_vault (Chroma retrieval)]
+  D --> F(Phase 2 entry)
+  E --> F
+  F --> G[generate_recall]
+  G --> H[curriculum_plan]
+  H --> I[Plan stored in MongoDB]
+  E -->|Embeddings| ChromaDB
+  style ChromaDB fill:#f9f,stroke:#333,stroke-width:1px
+```
+
+## Quick start
+
+Prerequisites:
+- Python 3.10+ (project targets Python 3.12 in requirements, but 3.10+ is usually fine for local dev)
+- Node.js 18+
+- MongoDB (local or remote)
+
+Backend (server):
+
+```bash
+cd server
+python -m venv .venv
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+# or macOS / Linux
+# source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# edit .env and add keys: OPENAI_API_KEY, MONGODB_URI, CHROMA_DIRECTORY, TAVILY_API_KEY
+uvicorn app.main:app --reload
+```
+
+API docs: http://localhost:8000/docs
+
+Frontend (client):
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Client app: http://localhost:5173
 # PlacementPal 🎓🤖
 
 **PlacementPal** is an AI-powered placement preparation platform designed to help students crack technical interviews at top-tier software companies. By orchestrating **LangGraph**, **CrewAI**, **LangChain**, and **RAG (Retrieval-Augmented Generation)** over **ChromaDB**, PlacementPal crafts highly personalized, day-by-day preparation plans, company-specific intelligence profiles, active-recall question sets, and intelligent progress tracking.
